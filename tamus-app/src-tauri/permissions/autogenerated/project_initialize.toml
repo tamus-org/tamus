@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-project-initialize"
+description = "Enables the project_initialize command without any pre-configured scope."
+commands.allow = ["project_initialize"]
+
+[[permission]]
+identifier = "deny-project-initialize"
+description = "Denies the project_initialize command without any pre-configured scope."
+commands.deny = ["project_initialize"]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-project-execute"
+description = "Enables the project_execute command without any pre-configured scope."
+commands.allow = ["project_execute"]
+
+[[permission]]
+identifier = "deny-project-execute"
+description = "Denies the project_execute command without any pre-configured scope."
+commands.deny = ["project_execute"]

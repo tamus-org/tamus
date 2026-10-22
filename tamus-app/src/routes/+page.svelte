@@ -39,6 +39,7 @@
     type Element,
   } from '$lib/domain/project';
   import * as client from '$lib/services/project-client';
+  import { applyTheme, readStoredTheme, saveTheme, type Theme } from '$lib/ui/theme';
   import '../app.css';
 
   type Tab = { id: string; kind: 'model' | 'qualifier' };
@@ -69,9 +70,17 @@
   let modelsExpanded = $state(true);
   let qualifiersExpanded = $state(true);
   let modal = $state<ModalKind>(null);
+  const initialTheme = readStoredTheme();
+  applyTheme(initialTheme);
+  let theme = $state<Theme>(initialTheme);
   let advancedMode = $state(false);
   let modelNotation = $state<'IDEF0' | 'DFD'>('IDEF0');
   let draftBackground = $state('#ffffe8');
+  function setAppTheme(value: Theme) {
+    theme = value;
+    applyTheme(value);
+    saveTheme(value);
+  }
   function setAdvancedMode(value: boolean) {
     advancedMode = value;
     try {
@@ -1600,6 +1609,15 @@
     >
       <option value="ru">Русский</option>
       <option value="en">English</option>
+    </select>
+    <label for="interface-theme">{$t('Тема оформления')}</label>
+    <select
+      id="interface-theme"
+      value={theme}
+      onchange={(event) => setAppTheme(event.currentTarget.value as Theme)}
+    >
+      <option value="light">{$t('Светлая')}</option>
+      <option value="dark">{$t('Тёмная')}</option>
     </select>
     <label class="setting-toggle" for="advanced-mode"
       ><input
