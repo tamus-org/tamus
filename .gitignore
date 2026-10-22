@@ -1,0 +1,74 @@
+# JavaScript dependencies and package-manager caches
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+.yarn/install-state.gz
+
+# SvelteKit, Vite and frontend build output
+.svelte-kit/
+.vite/
+.vite-temp/
+.cache/
+/tamus-app/build/
+/tamus-app/dist/
+/tamus-app/package/
+vite.config.*.timestamp-*
+*.tsbuildinfo
+
+# Rust compilation, profiling and generated Tauri projects/schemas
+target/
+/tamus-app/src-tauri/gen/
+*.profraw
+*.profdata
+*.rs.bk
+
+# Test output, coverage, screenshots and browser traces
+.artifacts/
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+playwright/.cache/
+
+# Local environment values; keep templates without real credentials
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+!.env.*.example
+!.env.*.sample
+!.env.*.template
+*.local
+
+# User project exports; committed fixtures are part of the test suite
+*.tamus.json
+!/tamus-app/fixtures/**/*.tamus.json
+
+# Logs, temporary files and editor backups
+*.log
+*.tmp
+*.temp
+*.bak
+*~
+*.swp
+*.swo
+.eslintcache
+.stylelintcache
+
+# Personal IDE state; shared VS Code settings/recommendations stay versioned
+.idea/
+.fleet/
+.vscode/*.local.*
+*.code-workspace
+
+# Operating-system metadata
+.DS_Store
+._*
+.AppleDouble/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/

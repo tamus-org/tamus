@@ -1,0 +1,93 @@
+{
+  "format": "tamus-project",
+  "schemaVersion": 1,
+  "id": "example-project",
+  "name": "Деятельность предприятия",
+  "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+  "models": [
+    {
+      "id": "orders",
+      "name": "Обработка заказов",
+      "description": "От поступления заявки до подтверждения заказа.",
+      "notation": "IDEF0",
+      "blocks": [
+        {
+          "id": "receive",
+          "name": "Принять заказ",
+          "description": "Зарегистрировать заявку клиента.",
+          "x": 100,
+          "y": 145
+        },
+        {
+          "id": "verify",
+          "name": "Проверить данные",
+          "description": "Проверить состав и условия заказа.",
+          "x": 390,
+          "y": 280
+        },
+        {
+          "id": "approve",
+          "name": "Подтвердить заказ",
+          "description": "Согласовать заказ с клиентом.",
+          "x": 680,
+          "y": 415
+        }
+      ],
+      "flows": [
+        {
+          "id": "request-flow",
+          "name": "Заявка",
+          "sourceId": "receive",
+          "targetId": "verify"
+        },
+        {
+          "id": "verified-flow",
+          "name": "Проверенные данные",
+          "sourceId": "verify",
+          "targetId": "approve"
+        }
+      ]
+    }
+  ],
+  "qualifiers": [
+    {
+      "id": "documents",
+      "name": "Документы",
+      "description": "Документы, участвующие в процессах.",
+      "elements": [
+        {
+          "id": "request",
+          "name": "Заявка клиента",
+          "description": "Первичное обращение клиента."
+        },
+        {
+          "id": "order",
+          "name": "Заказ",
+          "description": "Согласованный состав заказа."
+        },
+        {
+          "id": "confirmation",
+          "name": "Подтверждение заказа",
+          "description": "Результат проверки и согласования."
+        }
+      ]
+    },
+    {
+      "id": "people",
+      "name": "Персонал",
+      "description": "Участники процессов.",
+      "elements": [
+        {
+          "id": "manager",
+          "name": "Менеджер",
+          "description": "Принимает и сопровождает заказ."
+        },
+        {
+          "id": "specialist",
+          "name": "Специалист",
+          "description": "Проверяет состав заказа."
+        }
+      ]
+    }
+  ]
+}

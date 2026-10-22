@@ -1,0 +1,217 @@
+{
+  "commands": [
+    {
+      "kind": "updateBlock",
+      "modelId": "orders",
+      "block": {
+        "id": "receive",
+        "name": "Принять заказ",
+        "description": "Зарегистрировать заявку клиента.",
+        "x": 100,
+        "y": 145,
+        "width": 280,
+        "height": 160
+      }
+    },
+    {
+      "kind": "updateFlow",
+      "modelId": "orders",
+      "flow": {
+        "id": "request-flow",
+        "name": "",
+        "sourceId": "receive",
+        "targetId": "verify",
+        "objectIds": [
+          "request",
+          "documents"
+        ],
+        "sourcePosition": 0.2
+      }
+    },
+    {
+      "kind": "decomposeBlock",
+      "modelId": "orders",
+      "blockId": "verify",
+      "childId": "child",
+      "count": 2,
+      "layout": "vertical"
+    },
+    {
+      "kind": "addFlow",
+      "modelId": "child",
+      "flow": {
+        "id": "inherited",
+        "name": "",
+        "sourceId": null,
+        "targetId": "child-1",
+        "parentFlowId": "request-flow",
+        "caption": "Локальная подпись"
+      }
+    },
+    {
+      "kind": "centerArrows",
+      "modelId": "orders",
+      "blockId": "receive"
+    },
+    {
+      "kind": "updateElement",
+      "qualifierId": "documents",
+      "element": {
+        "id": "request",
+        "name": "Заказ покупателя",
+        "description": "Первичное обращение клиента."
+      }
+    }
+  ],
+  "expected": {
+    "format": "tamus-project",
+    "schemaVersion": 1,
+    "id": "example-project",
+    "name": "Деятельность предприятия",
+    "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+    "models": [
+      {
+        "id": "orders",
+        "name": "Обработка заказов",
+        "description": "От поступления заявки до подтверждения заказа.",
+        "notation": "IDEF0",
+        "blocks": [
+          {
+            "id": "receive",
+            "name": "Принять заказ",
+            "description": "Зарегистрировать заявку клиента.",
+            "x": 100,
+            "y": 145,
+            "width": 280,
+            "height": 160
+          },
+          {
+            "id": "verify",
+            "name": "Проверить данные",
+            "description": "Проверить состав и условия заказа.",
+            "x": 390,
+            "y": 280
+          },
+          {
+            "id": "approve",
+            "name": "Подтвердить заказ",
+            "description": "Согласовать заказ с клиентом.",
+            "x": 680,
+            "y": 415
+          }
+        ],
+        "flows": [
+          {
+            "id": "request-flow",
+            "name": "",
+            "sourceId": "receive",
+            "targetId": "verify",
+            "objectIds": [
+              "request",
+              "documents"
+            ],
+            "sourcePosition": 0.5
+          },
+          {
+            "id": "verified-flow",
+            "name": "Проверенные данные",
+            "sourceId": "verify",
+            "targetId": "approve"
+          }
+        ]
+      },
+      {
+        "id": "child",
+        "name": "Проверить данные",
+        "description": "Проверить состав и условия заказа.",
+        "notation": "IDEF0",
+        "parentBlockId": "verify",
+        "flows": [
+          {
+            "id": "inherited",
+            "name": "",
+            "sourceId": null,
+            "targetId": "child-1",
+            "parentFlowId": "request-flow",
+            "caption": "Локальная подпись",
+            "objectIds": [
+              "request",
+              "documents"
+            ],
+            "sourceSide": "left",
+            "sourcePosition": 0.5
+          }
+        ],
+        "blocks": [
+          {
+            "id": "child-1",
+            "name": "Функция 1",
+            "description": "",
+            "x": 100,
+            "y": 80
+          },
+          {
+            "id": "child-2",
+            "name": "Функция 2",
+            "description": "",
+            "x": 100,
+            "y": 260
+          }
+        ],
+        "sheet": {
+          "author": "",
+          "createdAt": "",
+          "revisedAt": "",
+          "usedAt": "",
+          "notes": "",
+          "reader": "",
+          "readerDate": "",
+          "number": "",
+          "node": "A2",
+          "context": "A0"
+        }
+      }
+    ],
+    "qualifiers": [
+      {
+        "id": "documents",
+        "name": "Документы",
+        "description": "Документы, участвующие в процессах.",
+        "elements": [
+          {
+            "id": "request",
+            "name": "Заказ покупателя",
+            "description": "Первичное обращение клиента."
+          },
+          {
+            "id": "order",
+            "name": "Заказ",
+            "description": "Согласованный состав заказа."
+          },
+          {
+            "id": "confirmation",
+            "name": "Подтверждение заказа",
+            "description": "Результат проверки и согласования."
+          }
+        ]
+      },
+      {
+        "id": "people",
+        "name": "Персонал",
+        "description": "Участники процессов.",
+        "elements": [
+          {
+            "id": "manager",
+            "name": "Менеджер",
+            "description": "Принимает и сопровождает заказ."
+          },
+          {
+            "id": "specialist",
+            "name": "Специалист",
+            "description": "Проверяет состав заказа."
+          }
+        ]
+      }
+    ]
+  }
+}

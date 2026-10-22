@@ -1,0 +1,251 @@
+{
+  "commands": [
+    {
+      "kind": "decomposeBlock",
+      "modelId": "orders",
+      "blockId": "verify",
+      "childId": "child"
+    },
+    {
+      "kind": "addFlow",
+      "modelId": "child",
+      "flow": {
+        "id": "inherited",
+        "name": "Заявка",
+        "sourceId": null,
+        "targetId": "child-1",
+        "sourceSide": "left",
+        "parentFlowId": "request-flow"
+      }
+    },
+    {
+      "kind": "decomposeBlock",
+      "modelId": "child",
+      "blockId": "child-1",
+      "childId": "grandchild"
+    },
+    {
+      "kind": "addFlow",
+      "modelId": "grandchild",
+      "flow": {
+        "id": "nested-inherited",
+        "name": "Заявка",
+        "sourceId": null,
+        "targetId": "grandchild-1",
+        "sourceSide": "left",
+        "parentFlowId": "inherited"
+      }
+    },
+    {
+      "kind": "updateFlow",
+      "modelId": "orders",
+      "flow": {
+        "id": "request-flow",
+        "name": "Условия заказа",
+        "sourceId": "receive",
+        "targetId": "verify",
+        "targetSide": "top"
+      }
+    }
+  ],
+  "expected": {
+    "format": "tamus-project",
+    "schemaVersion": 1,
+    "id": "example-project",
+    "name": "Деятельность предприятия",
+    "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+    "models": [
+      {
+        "id": "orders",
+        "name": "Обработка заказов",
+        "description": "От поступления заявки до подтверждения заказа.",
+        "notation": "IDEF0",
+        "blocks": [
+          {
+            "id": "receive",
+            "name": "Принять заказ",
+            "description": "Зарегистрировать заявку клиента.",
+            "x": 100,
+            "y": 145
+          },
+          {
+            "id": "verify",
+            "name": "Проверить данные",
+            "description": "Проверить состав и условия заказа.",
+            "x": 390,
+            "y": 280
+          },
+          {
+            "id": "approve",
+            "name": "Подтвердить заказ",
+            "description": "Согласовать заказ с клиентом.",
+            "x": 680,
+            "y": 415
+          }
+        ],
+        "flows": [
+          {
+            "id": "request-flow",
+            "name": "Условия заказа",
+            "sourceId": "receive",
+            "targetId": "verify",
+            "targetSide": "top"
+          },
+          {
+            "id": "verified-flow",
+            "name": "Проверенные данные",
+            "sourceId": "verify",
+            "targetId": "approve"
+          }
+        ]
+      },
+      {
+        "id": "child",
+        "name": "Проверить данные",
+        "description": "Проверить состав и условия заказа.",
+        "notation": "IDEF0",
+        "parentBlockId": "verify",
+        "flows": [
+          {
+            "id": "inherited",
+            "name": "Условия заказа",
+            "sourceId": null,
+            "targetId": "child-1",
+            "sourceSide": "top",
+            "parentFlowId": "request-flow",
+            "sourcePosition": 0.5
+          }
+        ],
+        "blocks": [
+          {
+            "id": "child-1",
+            "name": "Функция 1",
+            "description": "",
+            "x": 100,
+            "y": 80
+          },
+          {
+            "id": "child-2",
+            "name": "Функция 2",
+            "description": "",
+            "x": 390,
+            "y": 210
+          },
+          {
+            "id": "child-3",
+            "name": "Функция 3",
+            "description": "",
+            "x": 680,
+            "y": 340
+          }
+        ],
+        "sheet": {
+          "author": "",
+          "createdAt": "",
+          "revisedAt": "",
+          "usedAt": "",
+          "notes": "",
+          "reader": "",
+          "readerDate": "",
+          "number": "",
+          "node": "A2",
+          "context": "A0"
+        }
+      },
+      {
+        "id": "grandchild",
+        "name": "Функция 1",
+        "description": "",
+        "notation": "IDEF0",
+        "parentBlockId": "child-1",
+        "flows": [
+          {
+            "id": "nested-inherited",
+            "name": "Условия заказа",
+            "sourceId": null,
+            "targetId": "grandchild-1",
+            "sourceSide": "left",
+            "parentFlowId": "inherited",
+            "sourcePosition": 0.5
+          }
+        ],
+        "blocks": [
+          {
+            "id": "grandchild-1",
+            "name": "Функция 1",
+            "description": "",
+            "x": 100,
+            "y": 80
+          },
+          {
+            "id": "grandchild-2",
+            "name": "Функция 2",
+            "description": "",
+            "x": 390,
+            "y": 210
+          },
+          {
+            "id": "grandchild-3",
+            "name": "Функция 3",
+            "description": "",
+            "x": 680,
+            "y": 340
+          }
+        ],
+        "sheet": {
+          "author": "",
+          "createdAt": "",
+          "revisedAt": "",
+          "usedAt": "",
+          "notes": "",
+          "reader": "",
+          "readerDate": "",
+          "number": "",
+          "node": "A21",
+          "context": "A2"
+        }
+      }
+    ],
+    "qualifiers": [
+      {
+        "id": "documents",
+        "name": "Документы",
+        "description": "Документы, участвующие в процессах.",
+        "elements": [
+          {
+            "id": "request",
+            "name": "Заявка клиента",
+            "description": "Первичное обращение клиента."
+          },
+          {
+            "id": "order",
+            "name": "Заказ",
+            "description": "Согласованный состав заказа."
+          },
+          {
+            "id": "confirmation",
+            "name": "Подтверждение заказа",
+            "description": "Результат проверки и согласования."
+          }
+        ]
+      },
+      {
+        "id": "people",
+        "name": "Персонал",
+        "description": "Участники процессов.",
+        "elements": [
+          {
+            "id": "manager",
+            "name": "Менеджер",
+            "description": "Принимает и сопровождает заказ."
+          },
+          {
+            "id": "specialist",
+            "name": "Специалист",
+            "description": "Проверяет состав заказа."
+          }
+        ]
+      }
+    ]
+  }
+}

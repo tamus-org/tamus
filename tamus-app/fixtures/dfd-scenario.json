@@ -1,0 +1,3085 @@
+{
+  "commands": [
+    {
+      "kind": "addModel",
+      "model": {
+        "id": "dfd",
+        "name": "DFD заказов",
+        "description": "",
+        "notation": "DFD",
+        "sheet": {
+          "author": "",
+          "createdAt": "",
+          "revisedAt": "",
+          "usedAt": "",
+          "notes": "",
+          "reader": "",
+          "readerDate": "",
+          "number": "",
+          "node": "Контекст",
+          "context": "ВЕРХ"
+        },
+        "blocks": [
+          {
+            "id": "dfd-process",
+            "name": "Обработка заказа",
+            "description": "",
+            "kind": "process",
+            "x": 390,
+            "y": 220
+          },
+          {
+            "id": "dfd-external",
+            "name": "Клиент",
+            "description": "",
+            "kind": "external",
+            "x": 60,
+            "y": 90
+          },
+          {
+            "id": "dfd-store",
+            "name": "Заказы",
+            "description": "",
+            "kind": "dataStore",
+            "x": 720,
+            "y": 390
+          }
+        ],
+        "flows": []
+      }
+    },
+    {
+      "kind": "updateModel",
+      "id": "dfd",
+      "name": "DFD заказов",
+      "description": "",
+      "backgroundColor": "#ffffff"
+    },
+    {
+      "kind": "updateBlock",
+      "modelId": "dfd",
+      "block": {
+        "id": "dfd-process",
+        "name": "Обработка заказа",
+        "description": "",
+        "kind": "process",
+        "x": 390,
+        "y": 220,
+        "fillColor": "#d9edbd",
+        "textColor": "#123456"
+      }
+    },
+    {
+      "kind": "updateBlock",
+      "modelId": "dfd",
+      "block": {
+        "id": "dfd-process",
+        "name": "Обработка заказа",
+        "description": "",
+        "kind": "process",
+        "x": 390,
+        "y": 220
+      }
+    },
+    {
+      "kind": "updateBlock",
+      "modelId": "dfd",
+      "block": {
+        "id": "dfd-process",
+        "name": "Обработка заказа",
+        "description": "",
+        "kind": "process",
+        "x": 390,
+        "y": 220,
+        "fillColor": "#d9edbd"
+      }
+    },
+    {
+      "kind": "addFlow",
+      "modelId": "dfd",
+      "flow": {
+        "id": "dfd-in",
+        "name": "Заказ",
+        "sourceId": "dfd-external",
+        "targetId": "dfd-process",
+        "sourceSide": "bottom",
+        "targetSide": "top"
+      }
+    },
+    {
+      "kind": "addFlow",
+      "modelId": "dfd",
+      "flow": {
+        "id": "dfd-out",
+        "name": "Запись",
+        "sourceId": "dfd-process",
+        "targetId": "dfd-store",
+        "sourceSide": "left",
+        "targetSide": "bottom"
+      }
+    },
+    {
+      "kind": "addFlow",
+      "modelId": "dfd",
+      "flow": {
+        "id": "dfd-read",
+        "name": "Данные",
+        "sourceId": "dfd-store",
+        "targetId": "dfd-process",
+        "sourceSide": "top",
+        "targetSide": "right"
+      }
+    },
+    {
+      "kind": "decomposeBlock",
+      "modelId": "dfd",
+      "blockId": "dfd-process",
+      "childId": "dfd-child",
+      "count": 2,
+      "layout": "horizontal"
+    },
+    {
+      "kind": "addFlow",
+      "modelId": "dfd-child",
+      "flow": {
+        "id": "dfd-child-in",
+        "name": "Заказ",
+        "sourceId": null,
+        "targetId": "dfd-child-1",
+        "sourceSide": "left",
+        "targetSide": "top",
+        "parentFlowId": "dfd-in"
+      }
+    },
+    {
+      "kind": "addFlow",
+      "modelId": "dfd-child",
+      "flow": {
+        "id": "dfd-child-out",
+        "name": "Запись",
+        "sourceId": "dfd-child-2",
+        "targetId": null,
+        "sourceSide": "bottom",
+        "targetSide": "right",
+        "parentFlowId": "dfd-out"
+      }
+    },
+    {
+      "kind": "decomposeBlock",
+      "modelId": "dfd-child",
+      "blockId": "dfd-child-1",
+      "childId": "dfd-grandchild",
+      "count": 2
+    },
+    {
+      "kind": "updateFlow",
+      "modelId": "dfd",
+      "flow": {
+        "id": "dfd-in",
+        "name": "Заказ клиента",
+        "sourceId": "dfd-external",
+        "targetId": "dfd-process",
+        "sourceSide": "bottom",
+        "targetSide": "right"
+      }
+    }
+  ],
+  "expected": {
+    "format": "tamus-project",
+    "schemaVersion": 1,
+    "id": "example-project",
+    "name": "Деятельность предприятия",
+    "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+    "models": [
+      {
+        "id": "orders",
+        "name": "Обработка заказов",
+        "description": "От поступления заявки до подтверждения заказа.",
+        "notation": "IDEF0",
+        "blocks": [
+          {
+            "id": "receive",
+            "name": "Принять заказ",
+            "description": "Зарегистрировать заявку клиента.",
+            "x": 100,
+            "y": 145
+          },
+          {
+            "id": "verify",
+            "name": "Проверить данные",
+            "description": "Проверить состав и условия заказа.",
+            "x": 390,
+            "y": 280
+          },
+          {
+            "id": "approve",
+            "name": "Подтвердить заказ",
+            "description": "Согласовать заказ с клиентом.",
+            "x": 680,
+            "y": 415
+          }
+        ],
+        "flows": [
+          {
+            "id": "request-flow",
+            "name": "Заявка",
+            "sourceId": "receive",
+            "targetId": "verify"
+          },
+          {
+            "id": "verified-flow",
+            "name": "Проверенные данные",
+            "sourceId": "verify",
+            "targetId": "approve"
+          }
+        ]
+      },
+      {
+        "id": "dfd",
+        "name": "DFD заказов",
+        "description": "",
+        "notation": "DFD",
+        "sheet": {
+          "author": "",
+          "createdAt": "",
+          "revisedAt": "",
+          "usedAt": "",
+          "notes": "",
+          "reader": "",
+          "readerDate": "",
+          "number": "",
+          "node": "Контекст",
+          "context": "ВЕРХ"
+        },
+        "blocks": [
+          {
+            "id": "dfd-process",
+            "name": "Обработка заказа",
+            "description": "",
+            "kind": "process",
+            "x": 390,
+            "y": 220,
+            "fillColor": "#d9edbd"
+          },
+          {
+            "id": "dfd-external",
+            "name": "Клиент",
+            "description": "",
+            "kind": "external",
+            "x": 60,
+            "y": 90
+          },
+          {
+            "id": "dfd-store",
+            "name": "Заказы",
+            "description": "",
+            "kind": "dataStore",
+            "x": 720,
+            "y": 390
+          }
+        ],
+        "flows": [
+          {
+            "id": "dfd-in",
+            "name": "Заказ клиента",
+            "sourceId": "dfd-external",
+            "targetId": "dfd-process",
+            "sourceSide": "bottom",
+            "targetSide": "right"
+          },
+          {
+            "id": "dfd-out",
+            "name": "Запись",
+            "sourceId": "dfd-process",
+            "targetId": "dfd-store",
+            "sourceSide": "left",
+            "targetSide": "bottom"
+          },
+          {
+            "id": "dfd-read",
+            "name": "Данные",
+            "sourceId": "dfd-store",
+            "targetId": "dfd-process",
+            "sourceSide": "top",
+            "targetSide": "right"
+          }
+        ],
+        "backgroundColor": "#ffffff"
+      },
+      {
+        "id": "dfd-child",
+        "name": "Обработка заказа",
+        "description": "",
+        "notation": "DFD",
+        "backgroundColor": "#ffffff",
+        "parentBlockId": "dfd-process",
+        "flows": [
+          {
+            "id": "dfd-child-in",
+            "name": "Заказ клиента",
+            "sourceId": null,
+            "targetId": "dfd-child-1",
+            "sourceSide": "left",
+            "targetSide": "top",
+            "parentFlowId": "dfd-in",
+            "sourcePosition": 0.3333333333333333
+          },
+          {
+            "id": "dfd-child-out",
+            "name": "Запись",
+            "sourceId": "dfd-child-2",
+            "targetId": null,
+            "sourceSide": "bottom",
+            "targetSide": "right",
+            "parentFlowId": "dfd-out",
+            "targetPosition": 0.5
+          }
+        ],
+        "blocks": [
+          {
+            "id": "dfd-child-1",
+            "name": "Функция 1",
+            "description": "",
+            "x": 100,
+            "y": 100
+          },
+          {
+            "id": "dfd-child-2",
+            "name": "Функция 2",
+            "description": "",
+            "x": 390,
+            "y": 100
+          }
+        ],
+        "sheet": {
+          "author": "",
+          "createdAt": "",
+          "revisedAt": "",
+          "usedAt": "",
+          "notes": "",
+          "reader": "",
+          "readerDate": "",
+          "number": "",
+          "node": "0",
+          "context": "Контекст"
+        }
+      },
+      {
+        "id": "dfd-grandchild",
+        "name": "Функция 1",
+        "description": "",
+        "notation": "DFD",
+        "backgroundColor": "#ffffff",
+        "parentBlockId": "dfd-child-1",
+        "flows": [],
+        "blocks": [
+          {
+            "id": "dfd-grandchild-1",
+            "name": "Функция 1",
+            "description": "",
+            "x": 100,
+            "y": 80
+          },
+          {
+            "id": "dfd-grandchild-2",
+            "name": "Функция 2",
+            "description": "",
+            "x": 390,
+            "y": 210
+          }
+        ],
+        "sheet": {
+          "author": "",
+          "createdAt": "",
+          "revisedAt": "",
+          "usedAt": "",
+          "notes": "",
+          "reader": "",
+          "readerDate": "",
+          "number": "",
+          "node": "1",
+          "context": "0"
+        }
+      }
+    ],
+    "qualifiers": [
+      {
+        "id": "documents",
+        "name": "Документы",
+        "description": "Документы, участвующие в процессах.",
+        "elements": [
+          {
+            "id": "request",
+            "name": "Заявка клиента",
+            "description": "Первичное обращение клиента."
+          },
+          {
+            "id": "order",
+            "name": "Заказ",
+            "description": "Согласованный состав заказа."
+          },
+          {
+            "id": "confirmation",
+            "name": "Подтверждение заказа",
+            "description": "Результат проверки и согласования."
+          }
+        ]
+      },
+      {
+        "id": "people",
+        "name": "Персонал",
+        "description": "Участники процессов.",
+        "elements": [
+          {
+            "id": "manager",
+            "name": "Менеджер",
+            "description": "Принимает и сопровождает заказ."
+          },
+          {
+            "id": "specialist",
+            "name": "Специалист",
+            "description": "Проверяет состав заказа."
+          }
+        ]
+      }
+    ]
+  },
+  "invalidProjects": [
+    {
+      "format": "tamus-project",
+      "schemaVersion": 1,
+      "id": "example-project",
+      "name": "Деятельность предприятия",
+      "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+      "models": [
+        {
+          "id": "orders",
+          "name": "Обработка заказов",
+          "description": "От поступления заявки до подтверждения заказа.",
+          "notation": "IDEF0",
+          "blocks": [
+            {
+              "id": "receive",
+              "name": "Принять заказ",
+              "description": "Зарегистрировать заявку клиента.",
+              "x": 100,
+              "y": 145
+            },
+            {
+              "id": "verify",
+              "name": "Проверить данные",
+              "description": "Проверить состав и условия заказа.",
+              "x": 390,
+              "y": 280
+            },
+            {
+              "id": "approve",
+              "name": "Подтвердить заказ",
+              "description": "Согласовать заказ с клиентом.",
+              "x": 680,
+              "y": 415
+            }
+          ],
+          "flows": [
+            {
+              "id": "request-flow",
+              "name": "Заявка",
+              "sourceId": "receive",
+              "targetId": "verify"
+            },
+            {
+              "id": "verified-flow",
+              "name": "Проверенные данные",
+              "sourceId": "verify",
+              "targetId": "approve"
+            }
+          ]
+        },
+        {
+          "id": "dfd",
+          "name": "DFD заказов",
+          "description": "",
+          "notation": "DFD",
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "Контекст",
+            "context": "ВЕРХ"
+          },
+          "blocks": [
+            {
+              "id": "dfd-process",
+              "name": "Обработка заказа",
+              "description": "",
+              "kind": "process",
+              "x": 390,
+              "y": 220,
+              "fillColor": "#d9edbd"
+            },
+            {
+              "id": "dfd-external",
+              "name": "Клиент",
+              "description": "",
+              "kind": "external",
+              "x": 60,
+              "y": 90
+            },
+            {
+              "id": "dfd-store",
+              "name": "Заказы",
+              "description": "",
+              "kind": "dataStore",
+              "x": 720,
+              "y": 390
+            }
+          ],
+          "flows": [
+            {
+              "id": "dfd-in",
+              "name": "Заказ клиента",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-process",
+              "sourceSide": "bottom",
+              "targetSide": "right"
+            },
+            {
+              "id": "dfd-out",
+              "name": "Запись",
+              "sourceId": "dfd-process",
+              "targetId": "dfd-store",
+              "sourceSide": "left",
+              "targetSide": "bottom"
+            },
+            {
+              "id": "dfd-read",
+              "name": "Данные",
+              "sourceId": "dfd-store",
+              "targetId": "dfd-process",
+              "sourceSide": "top",
+              "targetSide": "right"
+            },
+            {
+              "id": "bad-flow",
+              "name": "Поток",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-store"
+            }
+          ],
+          "backgroundColor": "#ffffff"
+        },
+        {
+          "id": "dfd-child",
+          "name": "Обработка заказа",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-process",
+          "flows": [
+            {
+              "id": "dfd-child-in",
+              "name": "Заказ клиента",
+              "sourceId": null,
+              "targetId": "dfd-child-1",
+              "sourceSide": "left",
+              "targetSide": "top",
+              "parentFlowId": "dfd-in",
+              "sourcePosition": 0.3333333333333333
+            },
+            {
+              "id": "dfd-child-out",
+              "name": "Запись",
+              "sourceId": "dfd-child-2",
+              "targetId": null,
+              "sourceSide": "bottom",
+              "targetSide": "right",
+              "parentFlowId": "dfd-out",
+              "targetPosition": 0.5
+            }
+          ],
+          "blocks": [
+            {
+              "id": "dfd-child-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 100
+            },
+            {
+              "id": "dfd-child-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 100
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "0",
+            "context": "Контекст"
+          }
+        },
+        {
+          "id": "dfd-grandchild",
+          "name": "Функция 1",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-child-1",
+          "flows": [],
+          "blocks": [
+            {
+              "id": "dfd-grandchild-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 80
+            },
+            {
+              "id": "dfd-grandchild-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 210
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "1",
+            "context": "0"
+          }
+        }
+      ],
+      "qualifiers": [
+        {
+          "id": "documents",
+          "name": "Документы",
+          "description": "Документы, участвующие в процессах.",
+          "elements": [
+            {
+              "id": "request",
+              "name": "Заявка клиента",
+              "description": "Первичное обращение клиента."
+            },
+            {
+              "id": "order",
+              "name": "Заказ",
+              "description": "Согласованный состав заказа."
+            },
+            {
+              "id": "confirmation",
+              "name": "Подтверждение заказа",
+              "description": "Результат проверки и согласования."
+            }
+          ]
+        },
+        {
+          "id": "people",
+          "name": "Персонал",
+          "description": "Участники процессов.",
+          "elements": [
+            {
+              "id": "manager",
+              "name": "Менеджер",
+              "description": "Принимает и сопровождает заказ."
+            },
+            {
+              "id": "specialist",
+              "name": "Специалист",
+              "description": "Проверяет состав заказа."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "format": "tamus-project",
+      "schemaVersion": 1,
+      "id": "example-project",
+      "name": "Деятельность предприятия",
+      "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+      "models": [
+        {
+          "id": "orders",
+          "name": "Обработка заказов",
+          "description": "От поступления заявки до подтверждения заказа.",
+          "notation": "IDEF0",
+          "blocks": [
+            {
+              "id": "receive",
+              "name": "Принять заказ",
+              "description": "Зарегистрировать заявку клиента.",
+              "x": 100,
+              "y": 145
+            },
+            {
+              "id": "verify",
+              "name": "Проверить данные",
+              "description": "Проверить состав и условия заказа.",
+              "x": 390,
+              "y": 280
+            },
+            {
+              "id": "approve",
+              "name": "Подтвердить заказ",
+              "description": "Согласовать заказ с клиентом.",
+              "x": 680,
+              "y": 415
+            }
+          ],
+          "flows": [
+            {
+              "id": "request-flow",
+              "name": "Заявка",
+              "sourceId": "receive",
+              "targetId": "verify"
+            },
+            {
+              "id": "verified-flow",
+              "name": "Проверенные данные",
+              "sourceId": "verify",
+              "targetId": "approve"
+            }
+          ]
+        },
+        {
+          "id": "dfd",
+          "name": "DFD заказов",
+          "description": "",
+          "notation": "DFD",
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "Контекст",
+            "context": "ВЕРХ"
+          },
+          "blocks": [
+            {
+              "id": "dfd-process",
+              "name": "Обработка заказа",
+              "description": "",
+              "kind": "process",
+              "x": 390,
+              "y": 220,
+              "fillColor": "#d9edbd"
+            },
+            {
+              "id": "dfd-external",
+              "name": "Клиент",
+              "description": "",
+              "kind": "external",
+              "x": 60,
+              "y": 90
+            },
+            {
+              "id": "dfd-store",
+              "name": "Заказы",
+              "description": "",
+              "kind": "dataStore",
+              "x": 720,
+              "y": 390
+            }
+          ],
+          "flows": [
+            {
+              "id": "dfd-in",
+              "name": "Заказ клиента",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-process",
+              "sourceSide": "bottom",
+              "targetSide": "right"
+            },
+            {
+              "id": "dfd-out",
+              "name": "Запись",
+              "sourceId": "dfd-process",
+              "targetId": "dfd-store",
+              "sourceSide": "left",
+              "targetSide": "bottom"
+            },
+            {
+              "id": "dfd-read",
+              "name": "Данные",
+              "sourceId": "dfd-store",
+              "targetId": "dfd-process",
+              "sourceSide": "top",
+              "targetSide": "right"
+            },
+            {
+              "id": "bad-flow",
+              "name": "Поток",
+              "sourceId": null,
+              "targetId": "dfd-process"
+            }
+          ],
+          "backgroundColor": "#ffffff"
+        },
+        {
+          "id": "dfd-child",
+          "name": "Обработка заказа",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-process",
+          "flows": [
+            {
+              "id": "dfd-child-in",
+              "name": "Заказ клиента",
+              "sourceId": null,
+              "targetId": "dfd-child-1",
+              "sourceSide": "left",
+              "targetSide": "top",
+              "parentFlowId": "dfd-in",
+              "sourcePosition": 0.3333333333333333
+            },
+            {
+              "id": "dfd-child-out",
+              "name": "Запись",
+              "sourceId": "dfd-child-2",
+              "targetId": null,
+              "sourceSide": "bottom",
+              "targetSide": "right",
+              "parentFlowId": "dfd-out",
+              "targetPosition": 0.5
+            }
+          ],
+          "blocks": [
+            {
+              "id": "dfd-child-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 100
+            },
+            {
+              "id": "dfd-child-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 100
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "0",
+            "context": "Контекст"
+          }
+        },
+        {
+          "id": "dfd-grandchild",
+          "name": "Функция 1",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-child-1",
+          "flows": [],
+          "blocks": [
+            {
+              "id": "dfd-grandchild-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 80
+            },
+            {
+              "id": "dfd-grandchild-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 210
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "1",
+            "context": "0"
+          }
+        }
+      ],
+      "qualifiers": [
+        {
+          "id": "documents",
+          "name": "Документы",
+          "description": "Документы, участвующие в процессах.",
+          "elements": [
+            {
+              "id": "request",
+              "name": "Заявка клиента",
+              "description": "Первичное обращение клиента."
+            },
+            {
+              "id": "order",
+              "name": "Заказ",
+              "description": "Согласованный состав заказа."
+            },
+            {
+              "id": "confirmation",
+              "name": "Подтверждение заказа",
+              "description": "Результат проверки и согласования."
+            }
+          ]
+        },
+        {
+          "id": "people",
+          "name": "Персонал",
+          "description": "Участники процессов.",
+          "elements": [
+            {
+              "id": "manager",
+              "name": "Менеджер",
+              "description": "Принимает и сопровождает заказ."
+            },
+            {
+              "id": "specialist",
+              "name": "Специалист",
+              "description": "Проверяет состав заказа."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "format": "tamus-project",
+      "schemaVersion": 1,
+      "id": "example-project",
+      "name": "Деятельность предприятия",
+      "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+      "models": [
+        {
+          "id": "orders",
+          "name": "Обработка заказов",
+          "description": "От поступления заявки до подтверждения заказа.",
+          "notation": "IDEF0",
+          "blocks": [
+            {
+              "id": "receive",
+              "name": "Принять заказ",
+              "description": "Зарегистрировать заявку клиента.",
+              "x": 100,
+              "y": 145
+            },
+            {
+              "id": "verify",
+              "name": "Проверить данные",
+              "description": "Проверить состав и условия заказа.",
+              "x": 390,
+              "y": 280
+            },
+            {
+              "id": "approve",
+              "name": "Подтвердить заказ",
+              "description": "Согласовать заказ с клиентом.",
+              "x": 680,
+              "y": 415
+            }
+          ],
+          "flows": [
+            {
+              "id": "request-flow",
+              "name": "Заявка",
+              "sourceId": "receive",
+              "targetId": "verify"
+            },
+            {
+              "id": "verified-flow",
+              "name": "Проверенные данные",
+              "sourceId": "verify",
+              "targetId": "approve"
+            }
+          ]
+        },
+        {
+          "id": "dfd",
+          "name": "DFD заказов",
+          "description": "",
+          "notation": "DFD",
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "Контекст",
+            "context": "ВЕРХ"
+          },
+          "blocks": [
+            {
+              "id": "dfd-process",
+              "name": "Обработка заказа",
+              "description": "",
+              "kind": "unknown",
+              "x": 390,
+              "y": 220,
+              "fillColor": "#d9edbd"
+            },
+            {
+              "id": "dfd-external",
+              "name": "Клиент",
+              "description": "",
+              "kind": "external",
+              "x": 60,
+              "y": 90
+            },
+            {
+              "id": "dfd-store",
+              "name": "Заказы",
+              "description": "",
+              "kind": "dataStore",
+              "x": 720,
+              "y": 390
+            }
+          ],
+          "flows": [
+            {
+              "id": "dfd-in",
+              "name": "Заказ клиента",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-process",
+              "sourceSide": "bottom",
+              "targetSide": "right"
+            },
+            {
+              "id": "dfd-out",
+              "name": "Запись",
+              "sourceId": "dfd-process",
+              "targetId": "dfd-store",
+              "sourceSide": "left",
+              "targetSide": "bottom"
+            },
+            {
+              "id": "dfd-read",
+              "name": "Данные",
+              "sourceId": "dfd-store",
+              "targetId": "dfd-process",
+              "sourceSide": "top",
+              "targetSide": "right"
+            }
+          ],
+          "backgroundColor": "#ffffff"
+        },
+        {
+          "id": "dfd-child",
+          "name": "Обработка заказа",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-process",
+          "flows": [
+            {
+              "id": "dfd-child-in",
+              "name": "Заказ клиента",
+              "sourceId": null,
+              "targetId": "dfd-child-1",
+              "sourceSide": "left",
+              "targetSide": "top",
+              "parentFlowId": "dfd-in",
+              "sourcePosition": 0.3333333333333333
+            },
+            {
+              "id": "dfd-child-out",
+              "name": "Запись",
+              "sourceId": "dfd-child-2",
+              "targetId": null,
+              "sourceSide": "bottom",
+              "targetSide": "right",
+              "parentFlowId": "dfd-out",
+              "targetPosition": 0.5
+            }
+          ],
+          "blocks": [
+            {
+              "id": "dfd-child-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 100
+            },
+            {
+              "id": "dfd-child-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 100
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "0",
+            "context": "Контекст"
+          }
+        },
+        {
+          "id": "dfd-grandchild",
+          "name": "Функция 1",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-child-1",
+          "flows": [],
+          "blocks": [
+            {
+              "id": "dfd-grandchild-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 80
+            },
+            {
+              "id": "dfd-grandchild-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 210
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "1",
+            "context": "0"
+          }
+        }
+      ],
+      "qualifiers": [
+        {
+          "id": "documents",
+          "name": "Документы",
+          "description": "Документы, участвующие в процессах.",
+          "elements": [
+            {
+              "id": "request",
+              "name": "Заявка клиента",
+              "description": "Первичное обращение клиента."
+            },
+            {
+              "id": "order",
+              "name": "Заказ",
+              "description": "Согласованный состав заказа."
+            },
+            {
+              "id": "confirmation",
+              "name": "Подтверждение заказа",
+              "description": "Результат проверки и согласования."
+            }
+          ]
+        },
+        {
+          "id": "people",
+          "name": "Персонал",
+          "description": "Участники процессов.",
+          "elements": [
+            {
+              "id": "manager",
+              "name": "Менеджер",
+              "description": "Принимает и сопровождает заказ."
+            },
+            {
+              "id": "specialist",
+              "name": "Специалист",
+              "description": "Проверяет состав заказа."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "format": "tamus-project",
+      "schemaVersion": 1,
+      "id": "example-project",
+      "name": "Деятельность предприятия",
+      "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+      "models": [
+        {
+          "id": "orders",
+          "name": "Обработка заказов",
+          "description": "От поступления заявки до подтверждения заказа.",
+          "notation": "IDEF0",
+          "blocks": [
+            {
+              "id": "receive",
+              "name": "Принять заказ",
+              "description": "Зарегистрировать заявку клиента.",
+              "x": 100,
+              "y": 145,
+              "kind": "external"
+            },
+            {
+              "id": "verify",
+              "name": "Проверить данные",
+              "description": "Проверить состав и условия заказа.",
+              "x": 390,
+              "y": 280
+            },
+            {
+              "id": "approve",
+              "name": "Подтвердить заказ",
+              "description": "Согласовать заказ с клиентом.",
+              "x": 680,
+              "y": 415
+            }
+          ],
+          "flows": [
+            {
+              "id": "request-flow",
+              "name": "Заявка",
+              "sourceId": "receive",
+              "targetId": "verify"
+            },
+            {
+              "id": "verified-flow",
+              "name": "Проверенные данные",
+              "sourceId": "verify",
+              "targetId": "approve"
+            }
+          ]
+        },
+        {
+          "id": "dfd",
+          "name": "DFD заказов",
+          "description": "",
+          "notation": "DFD",
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "Контекст",
+            "context": "ВЕРХ"
+          },
+          "blocks": [
+            {
+              "id": "dfd-process",
+              "name": "Обработка заказа",
+              "description": "",
+              "kind": "process",
+              "x": 390,
+              "y": 220,
+              "fillColor": "#d9edbd"
+            },
+            {
+              "id": "dfd-external",
+              "name": "Клиент",
+              "description": "",
+              "kind": "external",
+              "x": 60,
+              "y": 90
+            },
+            {
+              "id": "dfd-store",
+              "name": "Заказы",
+              "description": "",
+              "kind": "dataStore",
+              "x": 720,
+              "y": 390
+            }
+          ],
+          "flows": [
+            {
+              "id": "dfd-in",
+              "name": "Заказ клиента",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-process",
+              "sourceSide": "bottom",
+              "targetSide": "right"
+            },
+            {
+              "id": "dfd-out",
+              "name": "Запись",
+              "sourceId": "dfd-process",
+              "targetId": "dfd-store",
+              "sourceSide": "left",
+              "targetSide": "bottom"
+            },
+            {
+              "id": "dfd-read",
+              "name": "Данные",
+              "sourceId": "dfd-store",
+              "targetId": "dfd-process",
+              "sourceSide": "top",
+              "targetSide": "right"
+            }
+          ],
+          "backgroundColor": "#ffffff"
+        },
+        {
+          "id": "dfd-child",
+          "name": "Обработка заказа",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-process",
+          "flows": [
+            {
+              "id": "dfd-child-in",
+              "name": "Заказ клиента",
+              "sourceId": null,
+              "targetId": "dfd-child-1",
+              "sourceSide": "left",
+              "targetSide": "top",
+              "parentFlowId": "dfd-in",
+              "sourcePosition": 0.3333333333333333
+            },
+            {
+              "id": "dfd-child-out",
+              "name": "Запись",
+              "sourceId": "dfd-child-2",
+              "targetId": null,
+              "sourceSide": "bottom",
+              "targetSide": "right",
+              "parentFlowId": "dfd-out",
+              "targetPosition": 0.5
+            }
+          ],
+          "blocks": [
+            {
+              "id": "dfd-child-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 100
+            },
+            {
+              "id": "dfd-child-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 100
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "0",
+            "context": "Контекст"
+          }
+        },
+        {
+          "id": "dfd-grandchild",
+          "name": "Функция 1",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-child-1",
+          "flows": [],
+          "blocks": [
+            {
+              "id": "dfd-grandchild-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 80
+            },
+            {
+              "id": "dfd-grandchild-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 210
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "1",
+            "context": "0"
+          }
+        }
+      ],
+      "qualifiers": [
+        {
+          "id": "documents",
+          "name": "Документы",
+          "description": "Документы, участвующие в процессах.",
+          "elements": [
+            {
+              "id": "request",
+              "name": "Заявка клиента",
+              "description": "Первичное обращение клиента."
+            },
+            {
+              "id": "order",
+              "name": "Заказ",
+              "description": "Согласованный состав заказа."
+            },
+            {
+              "id": "confirmation",
+              "name": "Подтверждение заказа",
+              "description": "Результат проверки и согласования."
+            }
+          ]
+        },
+        {
+          "id": "people",
+          "name": "Персонал",
+          "description": "Участники процессов.",
+          "elements": [
+            {
+              "id": "manager",
+              "name": "Менеджер",
+              "description": "Принимает и сопровождает заказ."
+            },
+            {
+              "id": "specialist",
+              "name": "Специалист",
+              "description": "Проверяет состав заказа."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "format": "tamus-project",
+      "schemaVersion": 1,
+      "id": "example-project",
+      "name": "Деятельность предприятия",
+      "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+      "models": [
+        {
+          "id": "orders",
+          "name": "Обработка заказов",
+          "description": "От поступления заявки до подтверждения заказа.",
+          "notation": "IDEF0",
+          "blocks": [
+            {
+              "id": "receive",
+              "name": "Принять заказ",
+              "description": "Зарегистрировать заявку клиента.",
+              "x": 100,
+              "y": 145
+            },
+            {
+              "id": "verify",
+              "name": "Проверить данные",
+              "description": "Проверить состав и условия заказа.",
+              "x": 390,
+              "y": 280
+            },
+            {
+              "id": "approve",
+              "name": "Подтвердить заказ",
+              "description": "Согласовать заказ с клиентом.",
+              "x": 680,
+              "y": 415
+            }
+          ],
+          "flows": [
+            {
+              "id": "request-flow",
+              "name": "Заявка",
+              "sourceId": "receive",
+              "targetId": "verify"
+            },
+            {
+              "id": "verified-flow",
+              "name": "Проверенные данные",
+              "sourceId": "verify",
+              "targetId": "approve"
+            }
+          ]
+        },
+        {
+          "id": "dfd",
+          "name": "DFD заказов",
+          "description": "",
+          "notation": "DFD",
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "Контекст",
+            "context": "ВЕРХ"
+          },
+          "blocks": [
+            {
+              "id": "dfd-process",
+              "name": "Обработка заказа",
+              "description": "",
+              "kind": "process",
+              "x": 390,
+              "y": 220,
+              "fillColor": "#d9edbd"
+            },
+            {
+              "id": "dfd-external",
+              "name": "Клиент",
+              "description": "",
+              "kind": "external",
+              "x": 60,
+              "y": 90
+            },
+            {
+              "id": "dfd-store",
+              "name": "Заказы",
+              "description": "",
+              "kind": "dataStore",
+              "x": 720,
+              "y": 390
+            }
+          ],
+          "flows": [
+            {
+              "id": "dfd-in",
+              "name": "Заказ клиента",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-process",
+              "sourceSide": "bottom",
+              "targetSide": "right"
+            },
+            {
+              "id": "dfd-out",
+              "name": "Запись",
+              "sourceId": "dfd-process",
+              "targetId": "dfd-store",
+              "sourceSide": "left",
+              "targetSide": "bottom"
+            },
+            {
+              "id": "dfd-read",
+              "name": "Данные",
+              "sourceId": "dfd-store",
+              "targetId": "dfd-process",
+              "sourceSide": "top",
+              "targetSide": "right"
+            }
+          ],
+          "backgroundColor": "white"
+        },
+        {
+          "id": "dfd-child",
+          "name": "Обработка заказа",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-process",
+          "flows": [
+            {
+              "id": "dfd-child-in",
+              "name": "Заказ клиента",
+              "sourceId": null,
+              "targetId": "dfd-child-1",
+              "sourceSide": "left",
+              "targetSide": "top",
+              "parentFlowId": "dfd-in",
+              "sourcePosition": 0.3333333333333333
+            },
+            {
+              "id": "dfd-child-out",
+              "name": "Запись",
+              "sourceId": "dfd-child-2",
+              "targetId": null,
+              "sourceSide": "bottom",
+              "targetSide": "right",
+              "parentFlowId": "dfd-out",
+              "targetPosition": 0.5
+            }
+          ],
+          "blocks": [
+            {
+              "id": "dfd-child-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 100
+            },
+            {
+              "id": "dfd-child-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 100
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "0",
+            "context": "Контекст"
+          }
+        },
+        {
+          "id": "dfd-grandchild",
+          "name": "Функция 1",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-child-1",
+          "flows": [],
+          "blocks": [
+            {
+              "id": "dfd-grandchild-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 80
+            },
+            {
+              "id": "dfd-grandchild-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 210
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "1",
+            "context": "0"
+          }
+        }
+      ],
+      "qualifiers": [
+        {
+          "id": "documents",
+          "name": "Документы",
+          "description": "Документы, участвующие в процессах.",
+          "elements": [
+            {
+              "id": "request",
+              "name": "Заявка клиента",
+              "description": "Первичное обращение клиента."
+            },
+            {
+              "id": "order",
+              "name": "Заказ",
+              "description": "Согласованный состав заказа."
+            },
+            {
+              "id": "confirmation",
+              "name": "Подтверждение заказа",
+              "description": "Результат проверки и согласования."
+            }
+          ]
+        },
+        {
+          "id": "people",
+          "name": "Персонал",
+          "description": "Участники процессов.",
+          "elements": [
+            {
+              "id": "manager",
+              "name": "Менеджер",
+              "description": "Принимает и сопровождает заказ."
+            },
+            {
+              "id": "specialist",
+              "name": "Специалист",
+              "description": "Проверяет состав заказа."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "format": "tamus-project",
+      "schemaVersion": 1,
+      "id": "example-project",
+      "name": "Деятельность предприятия",
+      "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+      "models": [
+        {
+          "id": "orders",
+          "name": "Обработка заказов",
+          "description": "От поступления заявки до подтверждения заказа.",
+          "notation": "IDEF0",
+          "blocks": [
+            {
+              "id": "receive",
+              "name": "Принять заказ",
+              "description": "Зарегистрировать заявку клиента.",
+              "x": 100,
+              "y": 145
+            },
+            {
+              "id": "verify",
+              "name": "Проверить данные",
+              "description": "Проверить состав и условия заказа.",
+              "x": 390,
+              "y": 280
+            },
+            {
+              "id": "approve",
+              "name": "Подтвердить заказ",
+              "description": "Согласовать заказ с клиентом.",
+              "x": 680,
+              "y": 415
+            }
+          ],
+          "flows": [
+            {
+              "id": "request-flow",
+              "name": "Заявка",
+              "sourceId": "receive",
+              "targetId": "verify"
+            },
+            {
+              "id": "verified-flow",
+              "name": "Проверенные данные",
+              "sourceId": "verify",
+              "targetId": "approve"
+            }
+          ]
+        },
+        {
+          "id": "dfd",
+          "name": "DFD заказов",
+          "description": "",
+          "notation": "DFD",
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "Контекст",
+            "context": "ВЕРХ"
+          },
+          "blocks": [
+            {
+              "id": "dfd-process",
+              "name": "Обработка заказа",
+              "description": "",
+              "kind": "process",
+              "x": 390,
+              "y": 220,
+              "fillColor": "#fff"
+            },
+            {
+              "id": "dfd-external",
+              "name": "Клиент",
+              "description": "",
+              "kind": "external",
+              "x": 60,
+              "y": 90
+            },
+            {
+              "id": "dfd-store",
+              "name": "Заказы",
+              "description": "",
+              "kind": "dataStore",
+              "x": 720,
+              "y": 390
+            }
+          ],
+          "flows": [
+            {
+              "id": "dfd-in",
+              "name": "Заказ клиента",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-process",
+              "sourceSide": "bottom",
+              "targetSide": "right"
+            },
+            {
+              "id": "dfd-out",
+              "name": "Запись",
+              "sourceId": "dfd-process",
+              "targetId": "dfd-store",
+              "sourceSide": "left",
+              "targetSide": "bottom"
+            },
+            {
+              "id": "dfd-read",
+              "name": "Данные",
+              "sourceId": "dfd-store",
+              "targetId": "dfd-process",
+              "sourceSide": "top",
+              "targetSide": "right"
+            }
+          ],
+          "backgroundColor": "#ffffff"
+        },
+        {
+          "id": "dfd-child",
+          "name": "Обработка заказа",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-process",
+          "flows": [
+            {
+              "id": "dfd-child-in",
+              "name": "Заказ клиента",
+              "sourceId": null,
+              "targetId": "dfd-child-1",
+              "sourceSide": "left",
+              "targetSide": "top",
+              "parentFlowId": "dfd-in",
+              "sourcePosition": 0.3333333333333333
+            },
+            {
+              "id": "dfd-child-out",
+              "name": "Запись",
+              "sourceId": "dfd-child-2",
+              "targetId": null,
+              "sourceSide": "bottom",
+              "targetSide": "right",
+              "parentFlowId": "dfd-out",
+              "targetPosition": 0.5
+            }
+          ],
+          "blocks": [
+            {
+              "id": "dfd-child-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 100
+            },
+            {
+              "id": "dfd-child-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 100
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "0",
+            "context": "Контекст"
+          }
+        },
+        {
+          "id": "dfd-grandchild",
+          "name": "Функция 1",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-child-1",
+          "flows": [],
+          "blocks": [
+            {
+              "id": "dfd-grandchild-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 80
+            },
+            {
+              "id": "dfd-grandchild-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 210
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "1",
+            "context": "0"
+          }
+        }
+      ],
+      "qualifiers": [
+        {
+          "id": "documents",
+          "name": "Документы",
+          "description": "Документы, участвующие в процессах.",
+          "elements": [
+            {
+              "id": "request",
+              "name": "Заявка клиента",
+              "description": "Первичное обращение клиента."
+            },
+            {
+              "id": "order",
+              "name": "Заказ",
+              "description": "Согласованный состав заказа."
+            },
+            {
+              "id": "confirmation",
+              "name": "Подтверждение заказа",
+              "description": "Результат проверки и согласования."
+            }
+          ]
+        },
+        {
+          "id": "people",
+          "name": "Персонал",
+          "description": "Участники процессов.",
+          "elements": [
+            {
+              "id": "manager",
+              "name": "Менеджер",
+              "description": "Принимает и сопровождает заказ."
+            },
+            {
+              "id": "specialist",
+              "name": "Специалист",
+              "description": "Проверяет состав заказа."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "format": "tamus-project",
+      "schemaVersion": 1,
+      "id": "example-project",
+      "name": "Деятельность предприятия",
+      "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+      "models": [
+        {
+          "id": "orders",
+          "name": "Обработка заказов",
+          "description": "От поступления заявки до подтверждения заказа.",
+          "notation": "IDEF0",
+          "blocks": [
+            {
+              "id": "receive",
+              "name": "Принять заказ",
+              "description": "Зарегистрировать заявку клиента.",
+              "x": 100,
+              "y": 145
+            },
+            {
+              "id": "verify",
+              "name": "Проверить данные",
+              "description": "Проверить состав и условия заказа.",
+              "x": 390,
+              "y": 280
+            },
+            {
+              "id": "approve",
+              "name": "Подтвердить заказ",
+              "description": "Согласовать заказ с клиентом.",
+              "x": 680,
+              "y": 415
+            }
+          ],
+          "flows": [
+            {
+              "id": "request-flow",
+              "name": "Заявка",
+              "sourceId": "receive",
+              "targetId": "verify"
+            },
+            {
+              "id": "verified-flow",
+              "name": "Проверенные данные",
+              "sourceId": "verify",
+              "targetId": "approve"
+            }
+          ]
+        },
+        {
+          "id": "dfd",
+          "name": "DFD заказов",
+          "description": "",
+          "notation": "DFD",
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "Контекст",
+            "context": "ВЕРХ"
+          },
+          "blocks": [
+            {
+              "id": "dfd-process",
+              "name": "Обработка заказа",
+              "description": "",
+              "kind": "process",
+              "x": 390,
+              "y": 220,
+              "fillColor": "#d9edbd",
+              "textColor": "#ff00gg"
+            },
+            {
+              "id": "dfd-external",
+              "name": "Клиент",
+              "description": "",
+              "kind": "external",
+              "x": 60,
+              "y": 90
+            },
+            {
+              "id": "dfd-store",
+              "name": "Заказы",
+              "description": "",
+              "kind": "dataStore",
+              "x": 720,
+              "y": 390
+            }
+          ],
+          "flows": [
+            {
+              "id": "dfd-in",
+              "name": "Заказ клиента",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-process",
+              "sourceSide": "bottom",
+              "targetSide": "right"
+            },
+            {
+              "id": "dfd-out",
+              "name": "Запись",
+              "sourceId": "dfd-process",
+              "targetId": "dfd-store",
+              "sourceSide": "left",
+              "targetSide": "bottom"
+            },
+            {
+              "id": "dfd-read",
+              "name": "Данные",
+              "sourceId": "dfd-store",
+              "targetId": "dfd-process",
+              "sourceSide": "top",
+              "targetSide": "right"
+            }
+          ],
+          "backgroundColor": "#ffffff"
+        },
+        {
+          "id": "dfd-child",
+          "name": "Обработка заказа",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-process",
+          "flows": [
+            {
+              "id": "dfd-child-in",
+              "name": "Заказ клиента",
+              "sourceId": null,
+              "targetId": "dfd-child-1",
+              "sourceSide": "left",
+              "targetSide": "top",
+              "parentFlowId": "dfd-in",
+              "sourcePosition": 0.3333333333333333
+            },
+            {
+              "id": "dfd-child-out",
+              "name": "Запись",
+              "sourceId": "dfd-child-2",
+              "targetId": null,
+              "sourceSide": "bottom",
+              "targetSide": "right",
+              "parentFlowId": "dfd-out",
+              "targetPosition": 0.5
+            }
+          ],
+          "blocks": [
+            {
+              "id": "dfd-child-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 100
+            },
+            {
+              "id": "dfd-child-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 100
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "0",
+            "context": "Контекст"
+          }
+        },
+        {
+          "id": "dfd-grandchild",
+          "name": "Функция 1",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-child-1",
+          "flows": [],
+          "blocks": [
+            {
+              "id": "dfd-grandchild-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 80
+            },
+            {
+              "id": "dfd-grandchild-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 210
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "1",
+            "context": "0"
+          }
+        }
+      ],
+      "qualifiers": [
+        {
+          "id": "documents",
+          "name": "Документы",
+          "description": "Документы, участвующие в процессах.",
+          "elements": [
+            {
+              "id": "request",
+              "name": "Заявка клиента",
+              "description": "Первичное обращение клиента."
+            },
+            {
+              "id": "order",
+              "name": "Заказ",
+              "description": "Согласованный состав заказа."
+            },
+            {
+              "id": "confirmation",
+              "name": "Подтверждение заказа",
+              "description": "Результат проверки и согласования."
+            }
+          ]
+        },
+        {
+          "id": "people",
+          "name": "Персонал",
+          "description": "Участники процессов.",
+          "elements": [
+            {
+              "id": "manager",
+              "name": "Менеджер",
+              "description": "Принимает и сопровождает заказ."
+            },
+            {
+              "id": "specialist",
+              "name": "Специалист",
+              "description": "Проверяет состав заказа."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "format": "tamus-project",
+      "schemaVersion": 1,
+      "id": "example-project",
+      "name": "Деятельность предприятия",
+      "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+      "models": [
+        {
+          "id": "orders",
+          "name": "Обработка заказов",
+          "description": "От поступления заявки до подтверждения заказа.",
+          "notation": "IDEF0",
+          "blocks": [
+            {
+              "id": "receive",
+              "name": "Принять заказ",
+              "description": "Зарегистрировать заявку клиента.",
+              "x": 100,
+              "y": 145
+            },
+            {
+              "id": "verify",
+              "name": "Проверить данные",
+              "description": "Проверить состав и условия заказа.",
+              "x": 390,
+              "y": 280
+            },
+            {
+              "id": "approve",
+              "name": "Подтвердить заказ",
+              "description": "Согласовать заказ с клиентом.",
+              "x": 680,
+              "y": 415
+            }
+          ],
+          "flows": [
+            {
+              "id": "request-flow",
+              "name": "Заявка",
+              "sourceId": "receive",
+              "targetId": "verify"
+            },
+            {
+              "id": "verified-flow",
+              "name": "Проверенные данные",
+              "sourceId": "verify",
+              "targetId": "approve"
+            }
+          ]
+        },
+        {
+          "id": "dfd",
+          "name": "DFD заказов",
+          "description": "",
+          "notation": "DFD",
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "Контекст",
+            "context": "ВЕРХ"
+          },
+          "blocks": [
+            {
+              "id": "dfd-process",
+              "name": "Обработка заказа",
+              "description": "",
+              "kind": "process",
+              "x": 390,
+              "y": 220,
+              "fillColor": "#d9edbd"
+            },
+            {
+              "id": "dfd-external",
+              "name": "Клиент",
+              "description": "",
+              "kind": "external",
+              "x": 60,
+              "y": 90
+            },
+            {
+              "id": "dfd-store",
+              "name": "Заказы",
+              "description": "",
+              "kind": "dataStore",
+              "x": 720,
+              "y": 390
+            },
+            {
+              "id": "another-process",
+              "name": "Другой процесс",
+              "description": "",
+              "kind": "process",
+              "x": 900,
+              "y": 100
+            }
+          ],
+          "flows": [
+            {
+              "id": "dfd-in",
+              "name": "Заказ клиента",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-process",
+              "sourceSide": "bottom",
+              "targetSide": "right"
+            },
+            {
+              "id": "dfd-out",
+              "name": "Запись",
+              "sourceId": "dfd-process",
+              "targetId": "dfd-store",
+              "sourceSide": "left",
+              "targetSide": "bottom"
+            },
+            {
+              "id": "dfd-read",
+              "name": "Данные",
+              "sourceId": "dfd-store",
+              "targetId": "dfd-process",
+              "sourceSide": "top",
+              "targetSide": "right"
+            }
+          ],
+          "backgroundColor": "#ffffff"
+        },
+        {
+          "id": "dfd-child",
+          "name": "Обработка заказа",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-process",
+          "flows": [
+            {
+              "id": "dfd-child-in",
+              "name": "Заказ клиента",
+              "sourceId": null,
+              "targetId": "dfd-child-1",
+              "sourceSide": "left",
+              "targetSide": "top",
+              "parentFlowId": "dfd-in",
+              "sourcePosition": 0.3333333333333333
+            },
+            {
+              "id": "dfd-child-out",
+              "name": "Запись",
+              "sourceId": "dfd-child-2",
+              "targetId": null,
+              "sourceSide": "bottom",
+              "targetSide": "right",
+              "parentFlowId": "dfd-out",
+              "targetPosition": 0.5
+            }
+          ],
+          "blocks": [
+            {
+              "id": "dfd-child-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 100
+            },
+            {
+              "id": "dfd-child-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 100
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "0",
+            "context": "Контекст"
+          }
+        },
+        {
+          "id": "dfd-grandchild",
+          "name": "Функция 1",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-child-1",
+          "flows": [],
+          "blocks": [
+            {
+              "id": "dfd-grandchild-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 80
+            },
+            {
+              "id": "dfd-grandchild-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 210
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "1",
+            "context": "0"
+          }
+        }
+      ],
+      "qualifiers": [
+        {
+          "id": "documents",
+          "name": "Документы",
+          "description": "Документы, участвующие в процессах.",
+          "elements": [
+            {
+              "id": "request",
+              "name": "Заявка клиента",
+              "description": "Первичное обращение клиента."
+            },
+            {
+              "id": "order",
+              "name": "Заказ",
+              "description": "Согласованный состав заказа."
+            },
+            {
+              "id": "confirmation",
+              "name": "Подтверждение заказа",
+              "description": "Результат проверки и согласования."
+            }
+          ]
+        },
+        {
+          "id": "people",
+          "name": "Персонал",
+          "description": "Участники процессов.",
+          "elements": [
+            {
+              "id": "manager",
+              "name": "Менеджер",
+              "description": "Принимает и сопровождает заказ."
+            },
+            {
+              "id": "specialist",
+              "name": "Специалист",
+              "description": "Проверяет состав заказа."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "format": "tamus-project",
+      "schemaVersion": 1,
+      "id": "example-project",
+      "name": "Деятельность предприятия",
+      "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+      "models": [
+        {
+          "id": "orders",
+          "name": "Обработка заказов",
+          "description": "От поступления заявки до подтверждения заказа.",
+          "notation": "IDEF0",
+          "blocks": [
+            {
+              "id": "receive",
+              "name": "Принять заказ",
+              "description": "Зарегистрировать заявку клиента.",
+              "x": 100,
+              "y": 145
+            },
+            {
+              "id": "verify",
+              "name": "Проверить данные",
+              "description": "Проверить состав и условия заказа.",
+              "x": 390,
+              "y": 280
+            },
+            {
+              "id": "approve",
+              "name": "Подтвердить заказ",
+              "description": "Согласовать заказ с клиентом.",
+              "x": 680,
+              "y": 415
+            }
+          ],
+          "flows": [
+            {
+              "id": "request-flow",
+              "name": "Заявка",
+              "sourceId": "receive",
+              "targetId": "verify"
+            },
+            {
+              "id": "verified-flow",
+              "name": "Проверенные данные",
+              "sourceId": "verify",
+              "targetId": "approve"
+            }
+          ]
+        },
+        {
+          "id": "dfd",
+          "name": "DFD заказов",
+          "description": "",
+          "notation": "DFD",
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "Контекст",
+            "context": "ВЕРХ"
+          },
+          "blocks": [
+            {
+              "id": "dfd-process",
+              "name": "Обработка заказа",
+              "description": "",
+              "kind": "process",
+              "x": 390,
+              "y": 220,
+              "fillColor": "#d9edbd"
+            },
+            {
+              "id": "dfd-external",
+              "name": "Клиент",
+              "description": "",
+              "kind": "external",
+              "x": 60,
+              "y": 90
+            },
+            {
+              "id": "dfd-store",
+              "name": "Заказы",
+              "description": "",
+              "kind": "dataStore",
+              "x": 720,
+              "y": 390
+            }
+          ],
+          "flows": [
+            {
+              "id": "dfd-in",
+              "name": "Заказ клиента",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-process",
+              "sourceSide": "bottom",
+              "targetSide": "right"
+            },
+            {
+              "id": "dfd-out",
+              "name": "Запись",
+              "sourceId": "dfd-process",
+              "targetId": "dfd-store",
+              "sourceSide": "left",
+              "targetSide": "bottom"
+            },
+            {
+              "id": "dfd-read",
+              "name": "Данные",
+              "sourceId": "dfd-store",
+              "targetId": "dfd-process",
+              "sourceSide": "top",
+              "targetSide": "right"
+            }
+          ],
+          "backgroundColor": "#ffffff"
+        },
+        {
+          "id": "dfd-child",
+          "name": "Обработка заказа",
+          "description": "",
+          "notation": "IDEF0",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-process",
+          "flows": [
+            {
+              "id": "dfd-child-in",
+              "name": "Заказ клиента",
+              "sourceId": null,
+              "targetId": "dfd-child-1",
+              "sourceSide": "left",
+              "targetSide": "top",
+              "parentFlowId": "dfd-in",
+              "sourcePosition": 0.3333333333333333
+            },
+            {
+              "id": "dfd-child-out",
+              "name": "Запись",
+              "sourceId": "dfd-child-2",
+              "targetId": null,
+              "sourceSide": "bottom",
+              "targetSide": "right",
+              "parentFlowId": "dfd-out",
+              "targetPosition": 0.5
+            }
+          ],
+          "blocks": [
+            {
+              "id": "dfd-child-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 100
+            },
+            {
+              "id": "dfd-child-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 100
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "0",
+            "context": "Контекст"
+          }
+        },
+        {
+          "id": "dfd-grandchild",
+          "name": "Функция 1",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-child-1",
+          "flows": [],
+          "blocks": [
+            {
+              "id": "dfd-grandchild-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 80
+            },
+            {
+              "id": "dfd-grandchild-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 210
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "1",
+            "context": "0"
+          }
+        }
+      ],
+      "qualifiers": [
+        {
+          "id": "documents",
+          "name": "Документы",
+          "description": "Документы, участвующие в процессах.",
+          "elements": [
+            {
+              "id": "request",
+              "name": "Заявка клиента",
+              "description": "Первичное обращение клиента."
+            },
+            {
+              "id": "order",
+              "name": "Заказ",
+              "description": "Согласованный состав заказа."
+            },
+            {
+              "id": "confirmation",
+              "name": "Подтверждение заказа",
+              "description": "Результат проверки и согласования."
+            }
+          ]
+        },
+        {
+          "id": "people",
+          "name": "Персонал",
+          "description": "Участники процессов.",
+          "elements": [
+            {
+              "id": "manager",
+              "name": "Менеджер",
+              "description": "Принимает и сопровождает заказ."
+            },
+            {
+              "id": "specialist",
+              "name": "Специалист",
+              "description": "Проверяет состав заказа."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "format": "tamus-project",
+      "schemaVersion": 1,
+      "id": "example-project",
+      "name": "Деятельность предприятия",
+      "description": "Учебный проект. Измените модель, добавьте справочники и сохраните свою копию.",
+      "models": [
+        {
+          "id": "orders",
+          "name": "Обработка заказов",
+          "description": "От поступления заявки до подтверждения заказа.",
+          "notation": "IDEF0",
+          "blocks": [
+            {
+              "id": "receive",
+              "name": "Принять заказ",
+              "description": "Зарегистрировать заявку клиента.",
+              "x": 100,
+              "y": 145
+            },
+            {
+              "id": "verify",
+              "name": "Проверить данные",
+              "description": "Проверить состав и условия заказа.",
+              "x": 390,
+              "y": 280
+            },
+            {
+              "id": "approve",
+              "name": "Подтвердить заказ",
+              "description": "Согласовать заказ с клиентом.",
+              "x": 680,
+              "y": 415
+            }
+          ],
+          "flows": [
+            {
+              "id": "request-flow",
+              "name": "Заявка",
+              "sourceId": "receive",
+              "targetId": "verify"
+            },
+            {
+              "id": "verified-flow",
+              "name": "Проверенные данные",
+              "sourceId": "verify",
+              "targetId": "approve"
+            }
+          ]
+        },
+        {
+          "id": "dfd",
+          "name": "DFD заказов",
+          "description": "",
+          "notation": "DFD",
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "Контекст",
+            "context": "ВЕРХ"
+          },
+          "blocks": [
+            {
+              "id": "dfd-process",
+              "name": "Обработка заказа",
+              "description": "",
+              "kind": "process",
+              "x": 390,
+              "y": 220,
+              "fillColor": "#d9edbd"
+            },
+            {
+              "id": "dfd-external",
+              "name": "Клиент",
+              "description": "",
+              "kind": "external",
+              "x": 60,
+              "y": 90
+            },
+            {
+              "id": "dfd-store",
+              "name": "Заказы",
+              "description": "",
+              "kind": "dataStore",
+              "x": 720,
+              "y": 390
+            }
+          ],
+          "flows": [
+            {
+              "id": "dfd-in",
+              "name": "Заказ клиента",
+              "sourceId": "dfd-external",
+              "targetId": "dfd-process",
+              "sourceSide": "bottom",
+              "targetSide": "right"
+            },
+            {
+              "id": "dfd-out",
+              "name": "Запись",
+              "sourceId": "dfd-process",
+              "targetId": "dfd-store",
+              "sourceSide": "left",
+              "targetSide": "bottom"
+            },
+            {
+              "id": "dfd-read",
+              "name": "Данные",
+              "sourceId": "dfd-store",
+              "targetId": "dfd-process",
+              "sourceSide": "top",
+              "targetSide": "right"
+            }
+          ],
+          "backgroundColor": "#ffffff"
+        },
+        {
+          "id": "dfd-child",
+          "name": "Обработка заказа",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-external",
+          "flows": [
+            {
+              "id": "dfd-child-in",
+              "name": "Заказ клиента",
+              "sourceId": null,
+              "targetId": "dfd-child-1",
+              "sourceSide": "left",
+              "targetSide": "top",
+              "parentFlowId": "dfd-in",
+              "sourcePosition": 0.3333333333333333
+            },
+            {
+              "id": "dfd-child-out",
+              "name": "Запись",
+              "sourceId": "dfd-child-2",
+              "targetId": null,
+              "sourceSide": "bottom",
+              "targetSide": "right",
+              "parentFlowId": "dfd-out",
+              "targetPosition": 0.5
+            }
+          ],
+          "blocks": [
+            {
+              "id": "dfd-child-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 100
+            },
+            {
+              "id": "dfd-child-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 100
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "0",
+            "context": "Контекст"
+          }
+        },
+        {
+          "id": "dfd-grandchild",
+          "name": "Функция 1",
+          "description": "",
+          "notation": "DFD",
+          "backgroundColor": "#ffffff",
+          "parentBlockId": "dfd-child-1",
+          "flows": [],
+          "blocks": [
+            {
+              "id": "dfd-grandchild-1",
+              "name": "Функция 1",
+              "description": "",
+              "x": 100,
+              "y": 80
+            },
+            {
+              "id": "dfd-grandchild-2",
+              "name": "Функция 2",
+              "description": "",
+              "x": 390,
+              "y": 210
+            }
+          ],
+          "sheet": {
+            "author": "",
+            "createdAt": "",
+            "revisedAt": "",
+            "usedAt": "",
+            "notes": "",
+            "reader": "",
+            "readerDate": "",
+            "number": "",
+            "node": "1",
+            "context": "0"
+          }
+        }
+      ],
+      "qualifiers": [
+        {
+          "id": "documents",
+          "name": "Документы",
+          "description": "Документы, участвующие в процессах.",
+          "elements": [
+            {
+              "id": "request",
+              "name": "Заявка клиента",
+              "description": "Первичное обращение клиента."
+            },
+            {
+              "id": "order",
+              "name": "Заказ",
+              "description": "Согласованный состав заказа."
+            },
+            {
+              "id": "confirmation",
+              "name": "Подтверждение заказа",
+              "description": "Результат проверки и согласования."
+            }
+          ]
+        },
+        {
+          "id": "people",
+          "name": "Персонал",
+          "description": "Участники процессов.",
+          "elements": [
+            {
+              "id": "manager",
+              "name": "Менеджер",
+              "description": "Принимает и сопровождает заказ."
+            },
+            {
+              "id": "specialist",
+              "name": "Специалист",
+              "description": "Проверяет состав заказа."
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "invalidCommands": [
+    {
+      "kind": "decomposeBlock",
+      "modelId": "dfd",
+      "blockId": "dfd-store",
+      "childId": "bad-child"
+    },
+    {
+      "kind": "decomposeBlock",
+      "modelId": "dfd",
+      "blockId": "dfd-external",
+      "childId": "bad-child"
+    }
+  ]
+}

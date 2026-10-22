@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "project-session"
+description = "Work with the validated Tamus session and user-selected project files"
+commands.allow = ["project_initialize", "project_execute", "project_replace", "project_undo", "project_redo", "project_open", "project_save", "project_close_window"]

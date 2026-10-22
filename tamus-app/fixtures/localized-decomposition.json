@@ -1,0 +1,10 @@
+{
+  "commands": [
+    { "kind": "decomposeBlock", "modelId": "orders", "blockId": "receive", "childId": "localized-child", "count": 2, "blockNamePrefix": "Function" },
+    { "kind": "decomposeBlock", "modelId": "localized-child", "blockId": "localized-child-1", "childId": "localized-grandchild", "count": 2, "blockNamePrefix": "Process" }
+  ],
+  "expected": {
+    "localized-child": ["Function 1", "Function 2"],
+    "localized-grandchild": ["Process 1", "Process 2"]
+  }
+}

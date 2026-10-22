@@ -1,0 +1,15 @@
+fn main() {
+    tauri_build::try_build(tauri_build::Attributes::new().app_manifest(
+        tauri_build::AppManifest::new().commands(&[
+            "project_initialize",
+            "project_execute",
+            "project_replace",
+            "project_undo",
+            "project_redo",
+            "project_open",
+            "project_save",
+            "project_close_window",
+        ]),
+    ))
+    .expect("Failed to build Tamus application permissions");
+}
