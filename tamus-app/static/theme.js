@@ -1,7 +1,13 @@
 (function () {
   var theme = 'light';
   try {
-    if (localStorage.getItem('tamus:ui:theme:v1') === 'dark') theme = 'dark';
+    theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  } catch (error) {
+    /* Fall back to the light theme. */
+  }
+  try {
+    var stored = localStorage.getItem('tamus:ui:theme:v1');
+    if (stored === 'light' || stored === 'dark') theme = stored;
   } catch (error) {
     /* Storage is optional. */
   }

@@ -2,12 +2,19 @@ export type Theme = 'light' | 'dark';
 
 const STORAGE_KEY = 'tamus:ui:theme:v1';
 
+function systemTheme(): Theme {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
 export function readStoredTheme(): Theme {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'dark' ? 'dark' : 'light';
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === 'light' || stored === 'dark') return stored;
   } catch {
-    return 'light';
+    /* Fall back to the operating system preference. */
   }
+  return systemTheme();
 }
 
 export function applyTheme(value: Theme) {
