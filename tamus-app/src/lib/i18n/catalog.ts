@@ -362,6 +362,7 @@ export const english: Record<string, string> = {
   'Свернуть — доступно в настольном приложении': 'Minimize — available in the desktop app',
   Сверху: 'Top',
   'Сверху вниз': 'Top to bottom',
+  Светлая: 'Light',
   Свойства: 'Properties',
   'Свойства блока': 'Block properties',
   'Свойства блока изменены': 'Block properties updated',
@@ -427,6 +428,8 @@ export const english: Record<string, string> = {
   Строка: 'Text',
   Схемы: 'Diagrams',
   'Текущий формат:': 'Current format:',
+  Тёмная: 'Dark',
+  'Тема оформления': 'Theme',
   Тип: 'Type',
   'Тип участия определяется стороной присоединения к функции.':
     'The role is determined by the function attachment side.',
