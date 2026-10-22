@@ -1,26 +1,42 @@
-# Tamus
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/dad69bf4-8d80-4604-abcc-67c804c743e6" alt="Tamus" width="128" height="128" />
 
-**English** | [Русский](README.ru.md)
+  # Tamus
 
-A desktop editor for **IDEF0 and DFD** process models, built with **Tauri 2, Svelte 5 and Rust**. Tamus draws on an analysis of Ramus features, including function decomposition, data flows, classifiers and navigation across diagram levels.
+  A desktop editor for IDEF0 and DFD process models built with Tauri 2, Svelte 5 and Rust. Tamus is based on research into Ramus capabilities: function decomposition, data flows, classifiers and working with multiple diagram levels.
 
-The project is under active development. The editor supports saving projects, while the full set of Ramus features is still being implemented.
+  🌐 **English** | [Русский](README.ru.md)
+  
+</div>
+
+> [!WARNING]
+> The project is in beta: bugs and unstable behavior are possible.
 
 ## Features
 
-- **IDEF0:** A-0 context diagrams, nested diagrams, I/C/O/M arrows and interfaces inherited from the parent block.
-- **DFD:** processes, external entities, data stores, directed flows and process decomposition.
-- **Editor:** block placement, movement and resizing, grid, zoom, automatic orthogonal arrow routing and context menus.
-- **Diagram sheets:** Ramus-style frames and title blocks, author, dates, notes, node, context, background color, block fill and text colors.
-- **Classifiers:** create and edit items, search, sort and attach reference objects to flows. Available in advanced mode.
-- **Projects:** multiple models, a function tree, tabs, a properties inspector, undo/redo for the last 100 changes and confirmation before discarding unsaved changes.
-- **English and Russian interface:** switch languages without restarting; language and advanced mode preferences are stored locally.
+- **IDEF0** — A-0 context, nested diagrams, I/C/O/M arrows and inheritance of parent block interfaces.
+- **DFD** — processes, external entities, data stores, directed flows and process decomposition.
+- **Editor** — placement, movement and resizing of blocks, grid, zoom, automatic orthogonal arrow routing and context menus.
+- **Diagram sheet** — Ramus-style frame and title blocks, author, dates, notes, node, context, background color, block fill and text.
+- **Classifiers** — create and edit items, search, sort and attach reference objects to flows. Available in advanced mode.
+- **Project management** — multiple models, function tree, tabs, properties inspector, undo/redo of the last 100 changes and confirmation before losing changes.
+- **Russian and English interface** — switch without restarting; language and advanced mode are saved locally.
+- **Dark and light theme** — switch without restarting; themes are saved locally.
 
-The current file format is **`.tamus.json`**. It stores diagram structure, geometry, appearance, title block fields and object references. This is a temporary Tamus-specific format; Ramus `.rsf` files cannot be opened yet.
+## Interface demo
+<p align="center">
+      <img src="https://github.com/user-attachments/assets/034d0678-0dab-483f-b24f-fe7b90dda101" alt="Interface demo" width="900">      
+</p>
 
-## Quick start
+## Installation
 
-You need **Node.js 20.19+** and npm. The desktop app also requires stable Rust and the Tauri 2 system dependencies for your OS. See the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for desktop environment setup.
+Download Tamus for your OS: Windows, macOS and Linux are available on [<img align="center" height="60" alt="GitHub" src="https://github.com/user-attachments/assets/1a481370-4323-40e8-94b8-0106b9fc5363" />](https://github.com/tamus-org/tamus/releases)
+
+## Run from source
+<details>
+<summary>Details</summary>
+
+You need **Node.js 20.19+**, npm and, for the desktop app, stable Rust with the Tauri 2 system dependencies for your OS. Desktop environment requirements are described in the [Tauri guide](https://v2.tauri.app/start/prerequisites/).
 
 ```bash
 git clone https://github.com/tamus-org/tamus.git
@@ -34,9 +50,9 @@ npm ci
 npm run dev
 ```
 
-Open [localhost:1420](http://localhost:1420/). The port is fixed; stop any other dev server using it.
+Open [localhost:1420](http://localhost:1420/). The port is fixed; if it is busy, stop the other dev server.
 
-Browser preview lets you use the editor without Rust or a system WebView. Save downloads a JSON file and, when possible, updates a local browser copy. Use the downloaded file to transfer your project. Tauri window controls are disabled in browser preview.
+Browser mode lets you use the editor without Rust or a system WebView. Save downloads a JSON file and, when possible, updates the local copy in the browser. Use the downloaded file to transfer the project. Tauri window controls are disabled in the preview.
 
 ### Desktop app
 
@@ -44,7 +60,7 @@ Browser preview lets you use the editor without Rust or a system WebView. Save d
 npm run tauri dev
 ```
 
-Tauri starts the frontend automatically. Do not run a separate `npm run dev` on the same port. In desktop mode, the Rust core handles state, history, validation and file operations; opening and saving use native file dialogs.
+Tauri starts the frontend itself. You do not need a separate `npm run dev` on the same port for this command. In desktop mode, state, history, validation and file operations are handled by the Rust core; opening and saving use native dialogs.
 
 ### Build
 
@@ -56,30 +72,9 @@ npm run build
 npm run tauri build
 ```
 
-Frontend output goes to `tamus-app/build/`. Standard desktop build output goes to `tamus-app/src-tauri/target/release/`, with installation packages in its `bundle/` subdirectory. Setting `CARGO_TARGET_DIR` changes the Cargo output location.
+Frontend output is written to `tamus-app/build/`, standard desktop build output to `tamus-app/src-tauri/target/release/`, and packages to its `bundle/` subdirectory. When `CARGO_TARGET_DIR` is set, the Cargo output path changes.
 
-A successful frontend build or core test run does not verify the native app. Build and test the desktop app on the target OS with its system dependencies installed.
-
-## First steps
-
-1. Open the sample project or create your own through File → New project.
-2. Create a model and choose IDEF0 or DFD.
-3. Place blocks and connect them with arrows. Double-click an object to open its properties.
-4. Ctrl/⌘+click a function or process to open its decomposition. When creating one, choose a layout and 2–20 activities; Parent returns to the level above.
-5. Enable Settings → Advanced mode to access classifiers. To switch from the default Russian interface, open Настройки → Язык интерфейса → English.
-6. Save your work as `.tamus.json`. An example file is available at [example.tamus.json](tamus-app/fixtures/example.tamus.json).
-
-| Shortcut           | Action                                   |
-| ------------------ | ---------------------------------------- |
-| Z / X / C / N      | Select / block or process / arrow / grid |
-| E / D              | External entity / data store in DFD      |
-| Ctrl/⌘+N / O / S   | New project / open / save                |
-| Ctrl/⌘+Shift+S     | Save as                                  |
-| Ctrl/⌘+Z / Shift+Z | Undo / redo                              |
-| Ctrl/⌘+K           | Search project                           |
-| Escape             | Cancel drawing or close a menu           |
-
-Tool shortcuts work in the editor without intercepting text input in form fields. In DFD, only processes support decomposition, and each flow must connect to at least one process.
+A frontend build and core tests do not confirm that the native app works. The desktop build and its behavior must be tested on the target OS with system dependencies installed.
 
 ## Checks
 
@@ -95,7 +90,7 @@ cargo test --manifest-path src-tauri/crates/tamus-core/Cargo.toml
 cargo clippy --manifest-path src-tauri/crates/tamus-core/Cargo.toml --all-targets -- -D warnings
 ```
 
-The `tamus-core` crate is tested independently of Tauri and does not require GTK/WebKit.
+The `tamus-core` crate is tested separately from Tauri and does not require GTK/WebKit.
 
 For browser scenarios, start `npm run dev` in another terminal, then run:
 
@@ -108,9 +103,10 @@ npm run test:shell
 npm run test:i18n
 ```
 
-These scenarios cover editing, classifiers, inherited interfaces, DFD, appearance, menus, localization, undo/redo and project save/open. Screenshots are written to `.artifacts/`.
+The scenarios cover editing, classifiers, interface inheritance, DFD, appearance, menus, localization, undo/redo and project save/open. Screenshots are written to `.artifacts/`.
 
-Set `PLAYWRIGHT_CHANNEL=msedge` to use an installed Edge browser, `TAMUS_URL` to change the server URL, or `PLAYWRIGHT_MODULE` to specify an external Playwright module. Environment variable syntax depends on your shell.
+Set `PLAYWRIGHT_CHANNEL=msedge` to use an installed Edge browser, `TAMUS_URL` to set the server URL, and `PLAYWRIGHT_MODULE` to specify an external Playwright module. Environment variable syntax depends on your shell.
+</details>
 
 ## Repository structure
 
@@ -130,26 +126,33 @@ tamus/
 │   ├── src-tauri/crates/tamus-core/ # State, commands, history and files
 │   ├── fixtures/                 # Shared test scenarios and examples
 │   ├── tests/                    # Model and localization tests
-│   └── scripts/                  # Browser integration checks
+│   └── scripts/                  # End-to-end browser checks
 └── LICENSE
 ```
 
-## Documentation and limitations
+## Technology stack
 
-- [Target architecture and migration plan](docs/TAURI_SVELTE_PROJECT.md) (Russian) — a design specification; some features described there are not implemented yet.
-- [Implemented IDEF0 features](docs/IMPLEMENTED_IDEF0.md) (Russian).
-- [DFD, appearance and interface modes](docs/DFD_AND_APPEARANCE.md) (Russian).
-- [Localization and adding translations](docs/I18N.md) (Russian).
-- [App developer guide](tamus-app/README.md) ([Russian version](tamus-app/README.ru.md)).
+| Category | Stack |
+| --- | --- |
+| Programming language | Rust, TypeScript |
+| UI framework | Svelte 5, SvelteKit, Tauri 2 |
+| Libraries | Serde, Tauri API, Playwright |
 
-RSF/IDL/YAML import, DFDS, shared-flow branching and merging, tunnels, manual arrow bend editing, full ICOM balancing checks, complex attributes, matrices, reports, printing/PDF and network mode are not available yet. Change history is stored in memory; a persistent crash recovery journal has not been implemented.
+## Project contributors
 
-## Files in Git
+<a href="https://github.com/tamus-org/tamus/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=tamus-org/tamus&max=300&columns=15" />
+</a>
 
-The shared [`.gitignore`](.gitignore) excludes dependencies, Node/Rust/Tauri build output, caches, logs, browser test output, local environment settings and user `.tamus.json` exports outside the fixture directory. `.env.example`, `.env.sample` and `.env.template` files can be committed.
+<br>
 
-Keep source code, documentation, icons, test fixtures, `package-lock.json` and `Cargo.lock` in Git. Ignore rules do not delete local files or stop tracking files that have already been committed.
+<a href="https://star-history.com/#tamus-org/tamus&Date">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=tamus-org/tamus&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=tamus-org/tamus&type=Date" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=tamus-org/tamus&type=Date" />
+ </picture>
+</a>
 
 ## License
-
-The project license text is available in [LICENSE](LICENSE).
+Tamus is distributed under the [GNU GPL-3.0](LICENSE) license.
