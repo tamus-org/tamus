@@ -43,6 +43,18 @@ pub struct Block {
     pub fill_color: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub text_color: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_size: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub font_style: Option<String>,
+}
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct FlowPoint {
+    pub x: f64,
+    pub y: f64,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -65,6 +77,14 @@ pub struct Flow {
     pub caption: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub object_ids: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub waypoints: Option<Vec<FlowPoint>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_x: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label_y: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hide_label: Option<bool>,
 }
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -95,6 +115,10 @@ pub struct Model {
     pub sheet: Option<DiagramSheet>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parent_block_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page_width: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub page_height: Option<f64>,
 }
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -285,6 +309,13 @@ impl Project {
                 }
             }
             check_color(m.background_color.as_deref())?;
+            if m.page_width
+                .is_some_and(|v| !v.is_finite() || !(600.0..=4000.0).contains(&v))
+                || m.page_height
+                    .is_some_and(|v| !v.is_finite() || !(400.0..=4000.0).contains(&v))
+            {
+                return Err("Размер листа: ширина 600–4000, высота 400–4000.".into());
+            }
             if !["IDEF0", "DFD"].contains(&m.notation.as_str()) {
                 return Err("Поддерживаются нотации IDEF0 и DFD.".into());
             }
@@ -318,6 +349,22 @@ impl Project {
                 }
                 check_color(b.fill_color.as_deref())?;
                 check_color(b.text_color.as_deref())?;
+                if b.font_name
+                    .as_ref()
+                    .is_some_and(|name| name.chars().count() > 128)
+                {
+                    return Err("Имя шрифта блока должно содержать не более 128 символов.".into());
+                }
+                if b.font_size
+                    .is_some_and(|size| !size.is_finite() || !(6.0..=72.0).contains(&size))
+                {
+                    return Err("Размер шрифта блока: 6–72.".into());
+                }
+                if b.font_style.as_deref().is_some_and(|style| {
+                    !["normal", "bold", "italic", "bold italic"].contains(&style)
+                }) {
+                    return Err("Неизвестный стиль шрифта блока.".into());
+                }
                 if b.width
                     .is_some_and(|v| !v.is_finite() || !(80.0..=800.0).contains(&v))
                     || b.height
@@ -352,6 +399,25 @@ impl Project {
                                 .any(|q| q.id == *id || q.elements.iter().any(|e| e.id == *id))
                     }) {
                         return Err("Поток ссылается на отсутствующий объект классификатора. Удалите присоединение перед удалением объекта.".into());
+                    }
+                }
+                if let Some(points) = &f.waypoints {
+                    if points.len() > 128
+                        || points.iter().any(|point| {
+                            !point.x.is_finite()
+                                || !point.y.is_finite()
+                                || !(0.0..=2000.0).contains(&point.x)
+                                || !(0.0..=2000.0).contains(&point.y)
+                        })
+                    {
+                        return Err("Точки стрелки: не более 128, координаты 0–2000.".into());
+                    }
+                }
+                for coordinate in [f.label_x, f.label_y] {
+                    if coordinate.is_some_and(|value| {
+                        !value.is_finite() || !(0.0..=2000.0).contains(&value)
+                    }) {
+                        return Err("Подпись стрелки должна находиться в пределах листа.".into());
                     }
                 }
                 let source = f
@@ -707,6 +773,8 @@ impl Project {
                     notation: parent.notation.clone(),
                     background_color: parent.background_color.clone(),
                     parent_block_id: Some(block_id),
+                    page_width: parent.page_width,
+                    page_height: parent.page_height,
                     flows: vec![],
                     sheet: Some(parent.sheet.clone().unwrap_or_default()),
                     blocks: (0..count)
@@ -723,6 +791,9 @@ impl Project {
                                 kind: None,
                                 fill_color: None,
                                 text_color: None,
+                                font_name: None,
+                                font_size: None,
+                                font_style: None,
                             }
                         })
                         .collect(),
@@ -1211,6 +1282,69 @@ mod tests {
             p.models[0].flows.push(serde_json::from_value(raw).unwrap());
             assert!(p.validate().is_err());
         }
+    }
+    #[test]
+    fn block_font_round_trips_and_is_validated() {
+        let mut project = project();
+        project.models[0].blocks[0].font_name = Some("Dialog".into());
+        project.models[0].blocks[0].font_size = Some(10.0);
+        project.models[0].blocks[0].font_style = Some("bold italic".into());
+        project.models[0].page_width = Some(816.0);
+        project.models[0].page_height = Some(612.0);
+        project.validate().unwrap();
+        let raw = serde_json::to_string(&project).unwrap();
+        let restored: Project = serde_json::from_str(&raw).unwrap();
+        assert_eq!(
+            restored.models[0].blocks[0].font_name.as_deref(),
+            Some("Dialog")
+        );
+        assert_eq!(restored.models[0].blocks[0].font_size, Some(10.0));
+        assert_eq!(
+            restored.models[0].blocks[0].font_style.as_deref(),
+            Some("bold italic")
+        );
+
+        let mut bad_size = project.clone();
+        bad_size.models[0].blocks[0].font_size = Some(100.0);
+        assert!(bad_size.validate().is_err());
+        let mut bad_page = project.clone();
+        bad_page.models[0].page_width = Some(100.0);
+        assert!(bad_page.validate().is_err());
+        let mut bad_style = project;
+        bad_style.models[0].blocks[0].font_style = Some("underline".into());
+        assert!(bad_style.validate().is_err());
+    }
+    #[test]
+    fn flow_waypoints_and_label_are_validated() {
+        let mut project = project();
+        project.models[0].flows[0].waypoints = Some(vec![
+            FlowPoint { x: 450.0, y: 320.0 },
+            FlowPoint { x: 500.0, y: 260.0 },
+        ]);
+        project.models[0].flows[0].label_x = Some(420.0);
+        project.models[0].flows[0].label_y = Some(280.0);
+        project.validate().unwrap();
+        let raw = serde_json::to_string(&project).unwrap();
+        let restored: Project = serde_json::from_str(&raw).unwrap();
+        assert_eq!(
+            restored.models[0].flows[0].waypoints.as_ref().unwrap().len(),
+            2
+        );
+        assert_eq!(restored.models[0].flows[0].label_x, Some(420.0));
+
+        let mut too_many = project.clone();
+        too_many.models[0].flows[0].waypoints = Some(
+            (0..129)
+                .map(|index| FlowPoint {
+                    x: index as f64,
+                    y: index as f64,
+                })
+                .collect(),
+        );
+        assert!(too_many.validate().is_err());
+        let mut bad_label = project;
+        bad_label.models[0].flows[0].label_x = Some(3000.0);
+        assert!(bad_label.validate().is_err());
     }
     #[test]
     fn sheet_fields_survive_save_reopen_and_undo() {

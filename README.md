@@ -20,6 +20,7 @@
 - **Diagram sheet** — Ramus-style frame and title blocks, author, dates, notes, node, context, background color, block fill and text.
 - **Classifiers** — create and edit items, search, sort and attach reference objects to flows. Available in advanced mode.
 - **Project management** — multiple models, function tree, tabs, properties inspector, undo/redo of the last 100 changes and confirmation before losing changes.
+- **Ramus exchange** — import and export IDEF0/DFD models as `.rsf` while preserving decompositions, geometry, flows and classifiers; an import report lists supported and unknown data.
 - **Russian and English interface** — switch without restarting; language and advanced mode are saved locally.
 - **Dark and light theme** — switch without restarting; themes are saved locally.
 

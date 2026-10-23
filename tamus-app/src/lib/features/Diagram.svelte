@@ -6,6 +6,7 @@
     diagramSheet,
     flowLabel,
     blockCode,
+    parentDiagram,
     type Project,
     type Block,
     type Model,
@@ -13,7 +14,7 @@
     type BoundaryPort,
     type PortSide,
   } from '$lib/domain/project';
-  import { arrowRoute, flowEndpoints, endpointPoint, type Endpoint } from './idef0-geometry';
+  import { flowRoute, flowEndpoints, endpointPoint, type Endpoint } from './idef0-geometry';
   let {
     model,
     project,
@@ -35,6 +36,7 @@
     onmove,
     onadd,
     onflow,
+    onmoveflow,
     busy,
   }: {
     model: Model;
@@ -57,6 +59,7 @@
     onmove: (block: Block) => void;
     onadd: (position?: { x: number; y: number }, kind?: Block['kind']) => void;
     onflow: () => void;
+    onmoveflow: (flow: Flow) => void;
     busy: boolean;
   } = $props();
   let zoom = $state(0.8);
@@ -75,9 +78,27 @@
     width: number;
     height: number;
   } | null>(null);
-  let width = $derived(Math.max(1050, ...model.blocks.map((b) => b.x + (b.width ?? 210) + 100)));
-  let height = $derived(Math.max(742, ...model.blocks.map((b) => b.y + (b.height ?? 110) + 212)));
+  let flowDrag = $state<{
+    id: string;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    original: RoutedFlow;
+    waypoints: { x: number; y: number }[];
+    index: number;
+    label: boolean;
+    x: number;
+    y: number;
+    moved: boolean;
+  } | null>(null);
+  let width = $derived(
+    Math.max(model.pageWidth ?? 1050, ...model.blocks.map((b) => b.x + (b.width ?? 210) + 100)),
+  );
+  let height = $derived(
+    Math.max(model.pageHeight ?? 742, ...model.blocks.map((b) => b.y + (b.height ?? 110) + 212)),
+  );
   const sheet = $derived(diagramSheet(model));
+  const parent = $derived(parentDiagram(project, model));
   let blocks = $derived(
     model.blocks.map((b) =>
       drag?.id === b.id
@@ -102,6 +123,19 @@
     return ((n >> 16) & 255) * 0.299 + ((n >> 8) & 255) * 0.587 + (n & 255) * 0.114 > 150
       ? '#25251f'
       : '#ffffff';
+  }
+  function blockFontSize(block: Block) {
+    if (block.fontSize === undefined || !Number.isFinite(block.fontSize)) return 16;
+    return Math.max(8, Math.min(72, (block.fontSize * 4) / 3));
+  }
+  function blockFontFamily(block: Block) {
+    const name = block.fontName?.trim();
+    if (!name || name === 'Dialog') return 'system-ui, sans-serif';
+    return `${JSON.stringify(name)}, system-ui, sans-serif`;
+  }
+  function blockLineClamp(block: Block) {
+    const height = block.height ?? 110;
+    return Math.max(1, Math.min(8, Math.floor((height - 22) / (blockFontSize(block) * 1.2))));
   }
   let tool = $state<'select' | 'flow' | 'block'>('select');
   let pending = $state<Endpoint | null>(null);
@@ -134,12 +168,35 @@
               ];
         }),
   );
-  const flows = $derived(
-    model.flows.map((flow) => ({
-      ...flow,
-      label: flowLabel(project, flow),
-      ...arrowRoute(...flowEndpoints(flow), blocks, bodyWidth, bodyHeight),
-    })),
+  const selectedBlockId = $derived(
+    blocks.some((block) => block.id === selectedId) ? selectedId : null,
+  );
+  const waypointDrag = $derived(flowDrag && !flowDrag.label ? flowDrag : null);
+  const routedFlows: RoutedFlow[] = $derived(
+    model.flows.map((flow) => {
+      const dragging = waypointDrag?.id === flow.id ? waypointDrag : null;
+      const route = flowRoute(
+        dragging ? { ...flow, waypoints: dragging.waypoints } : flow,
+        blocks,
+        bodyWidth,
+        bodyHeight,
+      );
+      return {
+        ...flow,
+        label: flowLabel(project, flow),
+        ...route,
+      };
+    }),
+  );
+  const flows: RoutedFlow[] = $derived(
+    routedFlows.map((flow) => {
+      const dragging = flowDrag?.id === flow.id && flowDrag.label ? flowDrag : null;
+      return {
+        ...flow,
+        x: dragging?.x ?? flow.labelX ?? flow.x,
+        y: dragging?.y ?? flow.labelY ?? flow.y,
+      };
+    }),
   );
   const preview = $derived.by(() => {
     if (!pending) return '';
@@ -194,6 +251,7 @@
     }
   }
   function track(event: PointerEvent) {
+    moveFlowDrag(event);
     move(event);
     if (pending && drawing) {
       const rect = drawing.getBoundingClientRect();
@@ -240,6 +298,10 @@
     drag.moved ||= Math.abs(dx) + Math.abs(dy) > 3;
   }
   function end(event: PointerEvent) {
+    if (flowDrag) {
+      endFlowDrag(event);
+      return;
+    }
     if (!drag || drag.pointerId !== event.pointerId) return;
     const previous = drag;
     drag = null;
@@ -250,6 +312,163 @@
         y: previous.y,
         ...(previous.resize ? { width: previous.width, height: previous.height } : {}),
       });
+  }
+  type RoutedFlow = Flow & {
+    points?: { x: number; y: number }[];
+    x: number;
+    y: number;
+    path: string;
+    label: string;
+  };
+  function pointInDrawing(event: PointerEvent) {
+    const rect = drawing.getBoundingClientRect();
+    return { x: (event.clientX - rect.left) / zoom, y: (event.clientY - rect.top) / zoom };
+  }
+  function distanceToSegment(
+    point: { x: number; y: number },
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+  ) {
+    const dx = b.x - a.x,
+      dy = b.y - a.y,
+      length = dx * dx + dy * dy;
+    if (!length) return Math.hypot(point.x - a.x, point.y - a.y);
+    const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / length));
+    return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy));
+  }
+  function closestOnSegment(
+    point: { x: number; y: number },
+    a: { x: number; y: number },
+    b: { x: number; y: number },
+  ) {
+    const dx = b.x - a.x,
+      dy = b.y - a.y,
+      length = dx * dx + dy * dy;
+    if (!length) return { x: a.x, y: a.y };
+    const t = Math.max(0, Math.min(1, ((point.x - a.x) * dx + (point.y - a.y) * dy) / length));
+    return { x: a.x + t * dx, y: a.y + t * dy };
+  }
+  function beginFlowDrag(event: PointerEvent, flow: RoutedFlow) {
+    if (event.button !== 0 || busy || tool !== 'select') return;
+    event.preventDefault();
+    event.stopPropagation();
+    onselect(flow.id);
+    (event.currentTarget as Element).setPointerCapture?.(event.pointerId);
+    const pointer = pointInDrawing(event);
+    const points = flow.points ?? [];
+    const waypoints = (flow.waypoints?.length ? flow.waypoints : points.slice(1, -1)).map(
+      (point) => ({
+        ...point,
+      }),
+    );
+    let index = -1,
+      best = 22;
+    waypoints.forEach((point, pointIndex) => {
+      const distance = Math.hypot(pointer.x - point.x, pointer.y - point.y);
+      if (distance < best) {
+        best = distance;
+        index = pointIndex;
+      }
+    });
+    if (index < 0 && points.length > 1) {
+      let segmentIndex = 0,
+        segmentDistance = Infinity;
+      for (let i = 0; i < points.length - 1; i++) {
+        const distance = distanceToSegment(pointer, points[i], points[i + 1]);
+        if (distance < segmentDistance) {
+          segmentDistance = distance;
+          segmentIndex = i;
+        }
+      }
+      if (segmentDistance <= 28) {
+        const insertAt = Math.max(0, Math.min(waypoints.length, segmentIndex));
+        waypoints.splice(
+          insertAt,
+          0,
+          closestOnSegment(pointer, points[segmentIndex], points[segmentIndex + 1]),
+        );
+        index = insertAt;
+      }
+    }
+    if (index < 0) return;
+    flowDrag = {
+      id: flow.id,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      original: flow,
+      waypoints,
+      index,
+      label: false,
+      x: flow.x,
+      y: flow.y,
+      moved: false,
+    };
+  }
+  function beginFlowLabelDrag(event: PointerEvent, flow: RoutedFlow) {
+    if (event.button !== 0 || busy || tool !== 'select') return;
+    event.preventDefault();
+    event.stopPropagation();
+    onselect(flow.id);
+    (event.currentTarget as Element).setPointerCapture?.(event.pointerId);
+    flowDrag = {
+      id: flow.id,
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      original: flow,
+      waypoints: [],
+      index: -1,
+      label: true,
+      x: flow.labelX ?? flow.x,
+      y: flow.labelY ?? flow.y,
+      moved: false,
+    };
+  }
+  function moveFlowDrag(event: PointerEvent) {
+    if (!flowDrag || flowDrag.pointerId !== event.pointerId) return;
+    const dx = (event.clientX - flowDrag.startX) / zoom,
+      dy = (event.clientY - flowDrag.startY) / zoom;
+    if (Math.abs(dx) + Math.abs(dy) > 3) flowDrag.moved = true;
+    if (flowDrag.label) {
+      flowDrag.x = Math.max(0, Math.min(2000, flowDrag.x + dx));
+      flowDrag.y = Math.max(0, Math.min(2000, flowDrag.y + dy));
+      flowDrag.startX = event.clientX;
+      flowDrag.startY = event.clientY;
+      return;
+    }
+    const pointer = pointInDrawing(event);
+    const snap = grid ? 10 : 1;
+    flowDrag.waypoints[flowDrag.index] = {
+      x: Math.max(0, Math.min(2000, Math.round(pointer.x / snap) * snap)),
+      y: Math.max(0, Math.min(2000, Math.round(pointer.y / snap) * snap)),
+    };
+  }
+  function endFlowDrag(event: PointerEvent) {
+    if (!flowDrag || flowDrag.pointerId !== event.pointerId) return;
+    const finished = flowDrag;
+    flowDrag = null;
+    if (!finished.moved) return;
+    const {
+      points: _points,
+      x: _x,
+      y: _y,
+      path: _path,
+      label: _label,
+      ...flow
+    } = finished.original;
+    if (finished.label) {
+      onmoveflow({
+        ...flow,
+        labelX: Math.round(finished.x),
+        labelY: Math.round(finished.y),
+      });
+    } else {
+      onmoveflow({
+        ...flow,
+        waypoints: finished.waypoints,
+      });
+    }
   }
   function fit() {
     if (viewport)
@@ -578,6 +797,13 @@
             </div>
           </div>
           <div class="sheet-context">
+            {#if parent}
+              <div class="context-map" aria-hidden="true">
+                {#each parent.blocks.slice(0, 12) as block (block.id)}
+                  <span class:filled={block.id === model.parentBlockId}></span>
+                {/each}
+              </div>
+            {/if}
             <span>{$t('КОНТЕКСТ:')}</span><span class="sheet-value"
               >{context === 'ВЕРХ' || context === 'Контекст' ? $t(context) : context}</span
             >
@@ -620,6 +846,8 @@
               <path
                 d={flow.path}
                 class:selected-flow={selectedId === flow.id}
+                class:related-flow={!!selectedBlockId &&
+                  (flow.sourceId === selectedBlockId || flow.targetId === selectedBlockId)}
                 marker-end="url(#flow-arrow)"
                 aria-hidden="true"
               />
@@ -630,6 +858,7 @@
                 tabindex="0"
                 aria-label={$t('Стрелка: {0}', { 0: flow.label || $t('без подписи') })}
                 ondblclick={() => onedit(flow.id)}
+                onpointerdown={(event) => beginFlowDrag(event, flow)}
                 oncontextmenu={(event) => contextMenu(event, 'flow', flow.id)}
                 onclick={() => {
                   if (tool === 'select') onselect(flow.id);
@@ -645,12 +874,13 @@
             {#if pending}<path d={preview} class="flow-preview" aria-hidden="true" />{/if}
           </svg>
           {#each flows as flow (flow.id)}
-            {#if flow.label}
+            {#if flow.label && !flow.hideLabel}
               <button
                 class="flow-label"
                 class:selected={selectedId === flow.id}
                 style:left={`${flow.x}px`}
                 style:top={`${flow.y}px`}
+                onpointerdown={(event) => beginFlowLabelDrag(event, flow)}
                 onclick={() => onselect(flow.id)}
                 ondblclick={() => onedit(flow.id)}
                 oncontextmenu={(event) => contextMenu(event, 'flow', flow.id)}
@@ -659,7 +889,7 @@
               >
             {/if}
           {/each}
-          {#each blocks as block, index (block.id)}
+          {#each blocks as block (block.id)}
             <div
               class="function-node"
               style:left={`${block.x}px`}
@@ -675,6 +905,11 @@
                 style:--block-fill={block.fillColor ?? 'var(--paper)'}
                 style:--block-text={block.textColor ??
                   readableText(block.fillColor ?? model.backgroundColor ?? '#ffffe8')}
+                style:--block-font-size={`${blockFontSize(block)}px`}
+                style:--block-font-family={blockFontFamily(block)}
+                style:--block-font-weight={block.fontStyle?.includes('bold') ? 700 : 400}
+                style:--block-font-style={block.fontStyle?.includes('italic') ? 'italic' : 'normal'}
+                style:--block-lines={String(blockLineClamp(block))}
                 class:selected={selectedId === block.id}
                 class:dragging={drag?.id === block.id}
                 onpointerdown={(event) => start(event, block)}
@@ -687,18 +922,17 @@
                 ondblclick={() => {
                   if (tool === 'select') onedit(block.id);
                 }}
-                aria-label={`${dfd ? (block.kind === 'external' ? $t('Внешняя сущность') : block.kind === 'dataStore' ? $t('Хранилище') : $t('Процесс')) : $t('Блок')} ${dfd ? blockCode(project, model, block) : index + 1}: ${block.name}`}
+                aria-label={`${dfd ? (block.kind === 'external' ? $t('Внешняя сущность') : block.kind === 'dataStore' ? $t('Хранилище') : $t('Процесс')) : $t('Блок')} ${blockCode(project, model, block)}: ${block.name}`}
                 title={$t('Двойной щелчок — свойства; Ctrl+щелчок — декомпозиция')}
                 oncontextmenu={(event) => contextMenu(event, 'block', block.id)}
                 disabled={busy}
               >
                 <span class="function-name">{block.name}</span><span class="function-number"
-                  >{dfd ? blockCode(project, model, block) : index + 1}</span
+                  >{blockCode(project, model, block)}</span
                 >
-                {#if (block.kind ?? 'process') === 'process'}{#if childBlockIds.includes(block.id)}<span
-                      class="decomposition-mark"
-                      title={$t('Есть декомпозиция')}>↓</span
-                    >{:else}<span class="leaf-mark" aria-hidden="true">/</span>{/if}{/if}
+                {#if (block.kind ?? 'process') === 'process' && !childBlockIds.includes(block.id)}
+                  <span class="leaf-mark" aria-hidden="true">/</span>
+                {/if}
                 {#if selectedId === block.id}<span class="selection-dot dot-tl"></span><span
                     class="selection-dot dot-tr"
                   ></span><span class="selection-dot dot-bl"></span><span
@@ -739,7 +973,7 @@
               bodyWidth,
               bodyHeight,
             )}
-            {#if tool === 'flow' || port.flowId}
+            {#if tool === 'flow'}
               <button
                 class={`boundary-port boundary-${port.side}`}
                 class:inherited={!!port.flowId}

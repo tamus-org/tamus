@@ -94,8 +94,8 @@
           <button class="welcome-action" onclick={onOpenRamus} disabled={busy}>
             <span class="welcome-action-icon"><Icon name="layers" size={21} /></span>
             <span class="welcome-action-copy">
-              <strong>{$t('Проект Ramus')}<span class="tag">{$t('скоро')}</span></strong>
-              <small>{$t('RSF или YAML')}</small>
+              <strong>{$t('Проект Ramus')}</strong>
+              <small>{$t('Файл Ramus (.rsf)')}</small>
             </span>
           </button>
         </div>

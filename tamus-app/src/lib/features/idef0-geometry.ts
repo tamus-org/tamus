@@ -184,5 +184,81 @@ export function arrowRoute(
     path: simplified.map((p, i) => `${i ? 'L' : 'M'} ${p.x} ${p.y}`).join(' '),
     x: label.x,
     y: label.y,
+    points: simplified,
   };
+}
+
+const simplifyPoints = (points: Point[]) => {
+  const unique = points.filter(
+    (point, index) => !index || point.x !== points[index - 1].x || point.y !== points[index - 1].y,
+  );
+  return unique.filter((point, index) => {
+    const before = unique[index - 1],
+      after = unique[index + 1];
+    if (!before || !after) return true;
+    if (before.x === point.x && point.x === after.x)
+      return point.y < Math.min(before.y, after.y) || point.y > Math.max(before.y, after.y);
+    if (before.y === point.y && point.y === after.y)
+      return point.x < Math.min(before.x, after.x) || point.x > Math.max(before.x, after.x);
+    return true;
+  });
+};
+
+const dedupePoints = (points: Point[]) =>
+  points.filter(
+    (point, index) => !index || point.x !== points[index - 1].x || point.y !== points[index - 1].y,
+  );
+
+export function orthogonalizeRoute(points: Point[], sourceSide: PortSide, targetSide: PortSide) {
+  if (points.length === 0) return points;
+  const result: Point[] = [points[0]];
+  let horizontal = sourceSide === 'left' || sourceSide === 'right';
+  for (let index = 1; index < points.length; index++) {
+    const previous = result[result.length - 1];
+    const next = points[index];
+    if (previous.x === next.x && previous.y === next.y) continue;
+    if (previous.x === next.x || previous.y === next.y) {
+      result.push(next);
+      horizontal = previous.y === next.y;
+      continue;
+    }
+    const last = index === points.length - 1;
+    const firstHorizontal = last ? !(targetSide === 'left' || targetSide === 'right') : horizontal;
+    result.push(
+      firstHorizontal ? { x: next.x, y: previous.y } : { x: previous.x, y: next.y },
+      next,
+    );
+    horizontal = !firstHorizontal;
+  }
+  return dedupePoints(result);
+}
+
+export function manualRoute(flow: Flow, blocks: Block[], width: number, height: number) {
+  const [source, target] = flowEndpoints(flow);
+  const start = endpointPoint(source, blocks, width, height);
+  const end = endpointPoint(target, blocks, width, height);
+  const points = simplifyPoints(
+    orthogonalizeRoute([start, ...(flow.waypoints ?? []), end], source.side, target.side),
+  );
+  const segments = points.slice(1).map((point, index) => ({
+    a: points[index],
+    b: point,
+    length: Math.abs(point.x - points[index].x) + Math.abs(point.y - points[index].y),
+  }));
+  const longest = segments.sort((a, b) => b.length - a.length)[0];
+  const label = longest
+    ? { x: (longest.a.x + longest.b.x) / 2, y: (longest.a.y + longest.b.y) / 2 }
+    : start;
+  return {
+    path: points.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.y}`).join(' '),
+    x: Math.max(20, Math.min(width - 20, label.x)),
+    y: Math.max(18, Math.min(height - 18, label.y)),
+    points,
+  };
+}
+
+export function flowRoute(flow: Flow, blocks: Block[], width: number, height: number) {
+  return flow.waypoints?.length
+    ? manualRoute(flow, blocks, width, height)
+    : arrowRoute(...flowEndpoints(flow), blocks, width, height);
 }

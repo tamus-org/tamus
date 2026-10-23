@@ -40,6 +40,8 @@
     type Element,
   } from '$lib/domain/project';
   import * as client from '$lib/services/project-client';
+  import * as ramus from '$lib/services/ramus-client';
+  import { exportRamusRsf, importRamusRsf, type RamusImportReport } from '$lib/legacy/ramus-rsf';
   import {
     loadRecentProject,
     readRecentProjects,
@@ -62,12 +64,14 @@
     | 'decompose'
     | 'settings'
     | 'objectProperties'
-    | 'ramus'
+    | 'ramusReport'
     | null;
   let screen = $state<'welcome' | 'editor'>('welcome');
   let recents = $state<RecentProject[]>([]);
   let snapshot = $state<Snapshot | null>(null);
   let tabs = $state<Tab[]>([]);
+  let draggedTabId = $state<string | null>(null);
+  let tabDropTarget = $state<string | null>(null);
   let activeId = $state<string | null>(null);
   let workspace = $state<'model' | 'qualifier'>('model');
   let selectedId = $state<string | null>(null);
@@ -130,6 +134,8 @@
   let draftTargetSide = $state<PortSide>('left');
   let draftSheet = $state(diagramSheet());
   let fileInput: HTMLInputElement;
+  let ramusInput: HTMLInputElement;
+  let ramusReport = $state<(RamusImportReport & { source: string }) | null>(null);
   let searchInput: HTMLInputElement;
   let nameInput = $state<HTMLInputElement>();
 
@@ -279,10 +285,57 @@
   function removeRecent(entry: RecentProject) {
     recents = removeRecentProject(entry.id);
   }
-  function requestRamus() {
+  async function requestRamus() {
     closeMenus();
     error = '';
-    modal = 'ramus';
+    if (!snapshot || busy) return;
+    await guard(async () => {
+      if (ramus.desktop) {
+        const file = await ramus.readFile();
+        if (file) await importRamusBytes(file.data, file.name);
+      } else ramusInput.click();
+    });
+  }
+  async function importRamusFile(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || !snapshot) return;
+    const data = new Uint8Array(await file.arrayBuffer());
+    await importRamusBytes(data, file.name);
+  }
+  async function importRamusBytes(data: Uint8Array, source: string) {
+    if (!snapshot) return;
+    let report: RamusImportReport | undefined;
+    const imported = await run(async () => {
+      const parsed = await importRamusRsf(data);
+      report = parsed.report;
+      return client.replace(parsed.project, snapshot!.revision);
+    }, 'Импорт Ramus завершён');
+    if (imported) {
+      enterEditor();
+      rememberCurrent();
+      if (report) {
+        ramusReport = { ...report, source };
+        status = 'Импорт Ramus завершён';
+        modal = 'ramusReport';
+      }
+    }
+  }
+  async function exportRamus() {
+    closeMenus();
+    if (!snapshot || busy) return;
+    busy = true;
+    error = '';
+    try {
+      const result = await exportRamusRsf(snapshot.project);
+      const saved = await ramus.writeFile(result.data, result.fileName);
+      if (saved) status = 'Экспорт Ramus завершён';
+    } catch (cause) {
+      error = String(cause);
+    } finally {
+      busy = false;
+    }
   }
   async function run(
     action: () => Promise<Snapshot | null>,
@@ -313,6 +366,37 @@
   }
   function closeMenus() {
     document.querySelectorAll('details[open]').forEach((d) => d.removeAttribute('open'));
+  }
+  function startTabDrag(event: DragEvent, tab: Tab) {
+    draggedTabId = tab.id;
+    tabDropTarget = tab.id;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', tab.id);
+    }
+  }
+  function dragTabOver(event: DragEvent, tab: Tab) {
+    if (!draggedTabId || draggedTabId === tab.id) return;
+    event.preventDefault();
+    tabDropTarget = tab.id;
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+  function dropTab(event: DragEvent, tab: Tab) {
+    event.preventDefault();
+    const id = draggedTabId ?? event.dataTransfer?.getData('text/plain') ?? '';
+    const from = tabs.findIndex((item) => item.id === id);
+    const to = tabs.findIndex((item) => item.id === tab.id);
+    draggedTabId = null;
+    tabDropTarget = null;
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...tabs];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    tabs = next;
+  }
+  function endTabDrag() {
+    draggedTabId = null;
+    tabDropTarget = null;
   }
   function openTab(id: string, kind: Tab['kind']) {
     closeMenus();
@@ -778,6 +862,15 @@
   bind:this={fileInput}
   onchange={importFile}
 />
+<input
+  class="visually-hidden"
+  tabindex="-1"
+  aria-label={$t('Открыть модель Ramus')}
+  type="file"
+  accept=".rsf,.RSF"
+  bind:this={ramusInput}
+  onchange={importRamusFile}
+/>
 
 {#if screen === 'welcome'}
   <Welcome
@@ -835,7 +928,9 @@
             ><button onclick={requestOpen} disabled={busy}
               ><span>{$t('Открыть…')}</span><kbd>Ctrl O</kbd></button
             ><button onclick={requestRamus} disabled={busy}
-              ><span>{$t('Импорт Ramus…')}</span><span class="tag">{$t('скоро')}</span></button
+              ><span>{$t('Импорт Ramus…')}</span></button
+            ><button onclick={() => void exportRamus()} disabled={busy || !snapshot}
+              ><span>{$t('Экспорт в Ramus…')}</span></button
             >
             <hr />
             <button onclick={() => save()} disabled={busy || !snapshot}
@@ -1036,7 +1131,7 @@
               title={row.blockId ? $t('Функция: Ctrl+щелчок — декомпозиция') : $t('Модель')}
               onclick={(event) => {
                 if (!row.blockId) {
-                  navigateDiagram(row.modelId);
+                  navigateDiagram(row.modelId, event.ctrlKey || event.metaKey);
                   return;
                 }
                 if (row.childId && !event.ctrlKey && !event.metaKey) {
@@ -1048,7 +1143,7 @@
                 inspector = true;
                 if ((event.ctrlKey || event.metaKey) && model) {
                   const block = model.blocks.find((b) => b.id === row.blockId);
-                  if (block) openDecomposition(block);
+                  if (block) openDecomposition(block, true);
                 }
               }}
               ><Icon name={row.blockId ? 'block' : 'model'} size={17} /><span>{row.name}</span><span
@@ -1101,10 +1196,27 @@
     </aside>
 
     <main class="workspace">
-      <div class="document-tabs" aria-label={$t('Открытые документы')}>
-        {#each tabs as tab}<div class="document-tab" class:active={activeId === tab.id}>
-            <button class="tab-main" onclick={() => openTab(tab.id, tab.kind)}
-              ><Icon name={tab.kind === 'model' ? 'model' : 'table'} size={16} /><span
+      <div class="document-tabs" role="list" aria-label={$t('Открытые документы')}>
+        {#each tabs as tab}          <div
+            class="document-tab"
+            role="listitem"
+            class:active={activeId === tab.id}
+            class:dragging={draggedTabId === tab.id}
+            class:drag-over={tabDropTarget === tab.id && draggedTabId !== tab.id}
+            ondragover={(event) => dragTabOver(event, tab)}
+            ondrop={(event) => dropTab(event, tab)}
+          >
+            <span
+              class="tab-grip"
+              draggable="true"
+              role="button"
+              tabindex="-1"
+              aria-label={$t('Перетащите вкладку')}
+              title={$t('Перетащите вкладку')}
+              ondragstart={(event) => startTabDrag(event, tab)}
+              ondragend={endTabDrag}>⋮</span
+            ><button class="tab-main" onclick={() => openTab(tab.id, tab.kind)}
+              ><Icon name={tab.kind === 'model' ? 'model' : 'table'} size={15} /><span
                 >{tab.kind === 'model'
                   ? project?.models.find((m) => m.id === tab.id)?.name
                   : project?.qualifiers.find((q) => q.id === tab.id)?.name}</span
@@ -1210,6 +1322,10 @@
             }}
             onadd={addBlock}
             onflow={addFlow}
+            onmoveflow={(flow) => {
+              if (model)
+                void apply({ kind: 'updateFlow', modelId: model.id, flow }, 'Стрелка перемещена');
+            }}
           />
         {:else if qualifier}
           <div class="table-toolbar">
@@ -1667,16 +1783,41 @@
   </div></Modal
 >
 
-<Modal open={modal === 'ramus'} title={$t('Импорт проекта Ramus')} onclose={cancelModal}
+<Modal open={modal === 'ramusReport'} title={$t('Отчёт импорта Ramus')} onclose={cancelModal}
   ><div class="modal-form">
-    <p class="modal-intro">
-      {$t('Чтение RSF и Ramus YAML пока не реализовано.')}
-    </p>
-    <p>
-      {$t(
-        'Сейчас можно открыть только проект Tamus в формате .tamus.json. Импорт Ramus появится на этапе совместимости; неподдержанные данные будут диагностироваться, а не теряться молча.',
-      )}
-    </p>
+    {#if ramusReport}
+      <p class="modal-intro">
+        {$t('Файл {name} прочитан.', { name: ramusReport.source })}
+      </p>
+      <dl class="shortcut-list">
+        <dt>{$t('Модели')}</dt>
+        <dd>{ramusReport.models}</dd>
+        <dt>{$t('Блоки')}</dt>
+        <dd>{ramusReport.blocks}</dd>
+        <dt>{$t('Связи')}</dt>
+        <dd>{ramusReport.flows}</dd>
+        <dt>{$t('Классификаторы')}</dt>
+        <dd>{ramusReport.qualifiers}</dd>
+        <dt>{$t('Элементы')}</dt>
+        <dd>{ramusReport.elements}</dd>
+      </dl>
+      {#if ramusReport.warnings.length > 0}
+        <h3>{$t('Предупреждения')}</h3>
+        <ul>
+          {#each ramusReport.warnings as warning}
+            <li>{warning}</li>
+          {/each}
+        </ul>
+      {/if}
+      {#if ramusReport.unknownTables.length > 0}
+        <h3>{$t('Неизвестные таблицы')}</h3>
+        <ul>
+          {#each ramusReport.unknownTables as table}
+            <li>{table}</li>
+          {/each}
+        </ul>
+      {/if}
+    {/if}
     <div class="modal-actions">
       <button class="button primary" onclick={cancelModal}>{$t('Понятно')}</button>
     </div>

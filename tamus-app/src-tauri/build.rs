@@ -10,6 +10,8 @@ fn main() {
             "project_open_path",
             "project_save",
             "project_close_window",
+            "ramus_read_file",
+            "ramus_write_file",
         ]),
     ))
     .expect("Failed to build Tamus application permissions");

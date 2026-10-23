@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ramus-read-file"
+description = "Enables the ramus_read_file command without any pre-configured scope."
+commands.allow = ["ramus_read_file"]
+
+[[permission]]
+identifier = "deny-ramus-read-file"
+description = "Denies the ramus_read_file command without any pre-configured scope."
+commands.deny = ["ramus_read_file"]
