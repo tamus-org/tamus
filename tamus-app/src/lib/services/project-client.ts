@@ -94,6 +94,11 @@ export async function open(expectedRevision: string): Promise<Snapshot | null> {
   return null;
 }
 
+export async function openPath(path: string, expectedRevision: string): Promise<Snapshot | null> {
+  if (!desktop) return null;
+  return invoke('project_open_path', { expectedRevision, path });
+}
+
 export async function save(expectedRevision: string, saveAs = false): Promise<Snapshot | null> {
   if (desktop) return invoke('project_save', { expectedRevision, saveAs, locale: currentLocale() });
   const json = JSON.stringify(previewProject, null, 2);

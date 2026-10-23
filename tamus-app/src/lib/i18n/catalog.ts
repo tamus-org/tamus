@@ -126,6 +126,7 @@ export const english: Record<string, string> = {
   Заказ: 'Order',
   Закрыть: 'Close',
   'Закрыть вкладку': 'Close tab',
+  'Перетащите вкладку': 'Drag tab',
   'Закрыть диалог': 'Close dialog',
   'Закрыть окно': 'Close window',
   'Закрыть сообщение': 'Dismiss message',
@@ -301,6 +302,7 @@ export const english: Record<string, string> = {
   Показано: 'Showing',
   Показать: 'Show',
   'Положение блока изменено': 'Block position changed',
+  'Стрелка перемещена': 'Arrow moved',
   'Поля штампа должны содержать не более 256 символов.':
     'Title block fields must be 256 characters or fewer.',
   Помощь: 'Help',
@@ -504,6 +506,51 @@ export const english: Record<string, string> = {
   'Разложите функцию «{name}» на работы.': 'Decompose function “{name}” into activities.',
   'Классификатор «{name}»': 'Classifier “{name}”',
   'Показано {visible} из {total}': 'Showing {visible} of {total}',
+  'Смешанный проект': 'Mixed project',
+  'Без моделей': 'No models',
+  'Локальная копия': 'Local copy',
+  'Модели процессов начинаются здесь': 'Process models start here',
+  'Создайте проект IDEF0 или DFD, откройте файл Tamus или вернитесь к недавней работе.':
+    'Create an IDEF0 or DFD project, open a Tamus file, or continue recent work.',
+  'Создать проект': 'Create project',
+  'Выберите IDEF0 или DFD': 'Choose IDEF0 or DFD',
+  'Файл .tamus.json': 'Tamus file (.tamus.json)',
+  'Проект Ramus': 'Ramus project',
+  скоро: 'soon',
+  'RSF или YAML': 'RSF or YAML',
+  'Продолжить работу': 'Continue working',
+  'Недавние проекты': 'Recent projects',
+  'Убрать из недавних': 'Remove from recent',
+  'Здесь появятся открытые и сохранённые проекты.': 'Opened and saved projects will appear here.',
+  'Tamus — главный экран': 'Tamus — home',
+  'Главный экран': 'Home',
+  'Импорт Ramus…': 'Import Ramus…',
+  'Экспорт в Ramus…': 'Export to Ramus…',
+  'Файл Ramus (.rsf)': 'Ramus file (.rsf)',
+  'Открыть модель Ramus': 'Open Ramus model',
+  'Импорт Ramus завершён': 'Ramus import complete',
+  'Экспорт Ramus завершён': 'Ramus export complete',
+  'Отчёт импорта Ramus': 'Ramus import report',
+  'Файл {name} прочитан.': 'File {name} was read.',
+  Блоки: 'Blocks',
+  Связи: 'Flows',
+  Элементы: 'Elements',
+  Предупреждения: 'Warnings',
+  'Неизвестные таблицы': 'Unknown tables',
+  'Выберите нотацию и задайте название. Контекстная диаграмма будет создана сразу.':
+    'Choose a notation and enter a name. A context diagram is created immediately.',
+  'Нотация проекта': 'Project notation',
+  'Функциональная модель процессов и их декомпозиции.':
+    'A functional model of processes and their decomposition.',
+  'Потоки данных, процессы, внешние сущности и хранилища.':
+    'Data flows, processes, external entities and data stores.',
+  'Импорт проекта Ramus': 'Import Ramus project',
+  'Чтение RSF и Ramus YAML пока не реализовано.':
+    'Reading RSF and Ramus YAML is not implemented yet.',
+  'Сейчас можно открыть только проект Tamus в формате .tamus.json. Импорт Ramus появится на этапе совместимости; неподдержанные данные будут диагностироваться, а не теряться молча.':
+    'Only Tamus projects in .tamus.json format can be opened now. Ramus import will arrive with the compatibility stage; unsupported data will be diagnosed rather than silently dropped.',
+  'Недавний проект недоступен. Откройте файл заново.':
+    'The recent project is unavailable. Open the file again.',
 };
 
 const errorPrefixes = Object.entries(english)

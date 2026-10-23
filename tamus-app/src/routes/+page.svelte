@@ -11,11 +11,12 @@
   import { onMount } from 'svelte';
   import Icon from '$lib/components/Icon.svelte';
   import Modal from '$lib/components/Modal.svelte';
+  import Welcome from '$lib/components/Welcome.svelte';
   import WindowControls from '$lib/components/WindowControls.svelte';
   import ObjectProperties from '$lib/components/ObjectProperties.svelte';
   import Diagram from '$lib/features/Diagram.svelte';
   import {
-    createProject,
+    createProjectWithDiagram,
     newId,
     validateProject,
     diagramSheet,
@@ -39,6 +40,15 @@
     type Element,
   } from '$lib/domain/project';
   import * as client from '$lib/services/project-client';
+  import * as ramus from '$lib/services/ramus-client';
+  import { exportRamusRsf, importRamusRsf, type RamusImportReport } from '$lib/legacy/ramus-rsf';
+  import {
+    loadRecentProject,
+    readRecentProjects,
+    rememberProject,
+    removeRecentProject,
+    type RecentProject,
+  } from '$lib/services/recent-projects';
   import { applyTheme, readStoredTheme, saveTheme, type Theme } from '$lib/ui/theme';
   import '../app.css';
 
@@ -54,9 +64,14 @@
     | 'decompose'
     | 'settings'
     | 'objectProperties'
+    | 'ramusReport'
     | null;
+  let screen = $state<'welcome' | 'editor'>('welcome');
+  let recents = $state<RecentProject[]>([]);
   let snapshot = $state<Snapshot | null>(null);
   let tabs = $state<Tab[]>([]);
+  let draggedTabId = $state<string | null>(null);
+  let tabDropTarget = $state<string | null>(null);
   let activeId = $state<string | null>(null);
   let workspace = $state<'model' | 'qualifier'>('model');
   let selectedId = $state<string | null>(null);
@@ -119,6 +134,8 @@
   let draftTargetSide = $state<PortSide>('left');
   let draftSheet = $state(diagramSheet());
   let fileInput: HTMLInputElement;
+  let ramusInput: HTMLInputElement;
+  let ramusReport = $state<(RamusImportReport & { source: string }) | null>(null);
   let searchInput: HTMLInputElement;
   let nameInput = $state<HTMLInputElement>();
 
@@ -200,7 +217,8 @@
   });
   $effect(() => {
     if (!client.desktop || !project) return;
-    const title = `${snapshot?.dirty ? '• ' : ''}${project.name} — Tamus`;
+    const title =
+      screen === 'welcome' ? 'Tamus' : `${snapshot?.dirty ? '• ' : ''}${project.name} — Tamus`;
     import('@tauri-apps/api/window')
       .then(({ getCurrentWindow }) => getCurrentWindow().setTitle(title))
       .catch(() => {});
@@ -227,6 +245,96 @@
       activeId = tabs.at(-1)?.id ?? null;
       if (!activeId && project.models.length)
         openTab(project.models.find((m) => !m.parentBlockId)?.id ?? project.models[0].id, 'model');
+    }
+  }
+  function enterEditor() {
+    screen = 'editor';
+    resetViews();
+    error = '';
+    status = 'Готов к работе';
+    statusParams = {};
+  }
+  function rememberCurrent() {
+    if (snapshot) recents = rememberProject(snapshot);
+  }
+  async function requestHome() {
+    await guard(async () => {
+      screen = 'welcome';
+      tabs = [];
+      activeId = null;
+      selectedId = null;
+      error = '';
+      recents = readRecentProjects();
+    });
+  }
+  async function openRecent(entry: RecentProject) {
+    if (!snapshot) return;
+    await guard(async () => {
+      const opened = await run(async () => {
+        if (client.desktop && entry.path) return client.openPath(entry.path, snapshot!.revision);
+        const cached = loadRecentProject(entry);
+        if (!cached) throw new Error('Недавний проект недоступен. Откройте файл заново.');
+        return client.replace(cached, snapshot!.revision);
+      }, 'Проект открыт');
+      if (opened) {
+        enterEditor();
+        rememberCurrent();
+      }
+    });
+  }
+  function removeRecent(entry: RecentProject) {
+    recents = removeRecentProject(entry.id);
+  }
+  async function requestRamus() {
+    closeMenus();
+    error = '';
+    if (!snapshot || busy) return;
+    await guard(async () => {
+      if (ramus.desktop) {
+        const file = await ramus.readFile();
+        if (file) await importRamusBytes(file.data, file.name);
+      } else ramusInput.click();
+    });
+  }
+  async function importRamusFile(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file || !snapshot) return;
+    const data = new Uint8Array(await file.arrayBuffer());
+    await importRamusBytes(data, file.name);
+  }
+  async function importRamusBytes(data: Uint8Array, source: string) {
+    if (!snapshot) return;
+    let report: RamusImportReport | undefined;
+    const imported = await run(async () => {
+      const parsed = await importRamusRsf(data);
+      report = parsed.report;
+      return client.replace(parsed.project, snapshot!.revision);
+    }, 'Импорт Ramus завершён');
+    if (imported) {
+      enterEditor();
+      rememberCurrent();
+      if (report) {
+        ramusReport = { ...report, source };
+        status = 'Импорт Ramus завершён';
+        modal = 'ramusReport';
+      }
+    }
+  }
+  async function exportRamus() {
+    closeMenus();
+    if (!snapshot || busy) return;
+    busy = true;
+    error = '';
+    try {
+      const result = await exportRamusRsf(snapshot.project);
+      const saved = await ramus.writeFile(result.data, result.fileName);
+      if (saved) status = 'Экспорт Ramus завершён';
+    } catch (cause) {
+      error = String(cause);
+    } finally {
+      busy = false;
     }
   }
   async function run(
@@ -258,6 +366,37 @@
   }
   function closeMenus() {
     document.querySelectorAll('details[open]').forEach((d) => d.removeAttribute('open'));
+  }
+  function startTabDrag(event: DragEvent, tab: Tab) {
+    draggedTabId = tab.id;
+    tabDropTarget = tab.id;
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', tab.id);
+    }
+  }
+  function dragTabOver(event: DragEvent, tab: Tab) {
+    if (!draggedTabId || draggedTabId === tab.id) return;
+    event.preventDefault();
+    tabDropTarget = tab.id;
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }
+  function dropTab(event: DragEvent, tab: Tab) {
+    event.preventDefault();
+    const id = draggedTabId ?? event.dataTransfer?.getData('text/plain') ?? '';
+    const from = tabs.findIndex((item) => item.id === id);
+    const to = tabs.findIndex((item) => item.id === tab.id);
+    draggedTabId = null;
+    tabDropTarget = null;
+    if (from < 0 || to < 0 || from === to) return;
+    const next = [...tabs];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    tabs = next;
+  }
+  function endTabDrag() {
+    draggedTabId = null;
+    tabDropTarget = null;
   }
   function openTab(id: string, kind: Tab['kind']) {
     closeMenus();
@@ -292,7 +431,7 @@
   async function guard(action: () => Promise<void>) {
     closeMenus();
     if (busy) return;
-    if (snapshot?.dirty) {
+    if (screen === 'editor' && snapshot?.dirty) {
       pending = action;
       modal = 'unsaved';
     } else await action();
@@ -300,10 +439,12 @@
   async function save(saveAs = false) {
     closeMenus();
     if (!snapshot) return false;
-    return run(
+    const saved = await run(
       () => client.save(snapshot!.revision, saveAs),
       client.desktop ? 'Проект сохранён' : 'Проект экспортирован в JSON',
     );
+    if (saved) rememberCurrent();
+    return saved;
   }
   async function confirmUnsaved(shouldSave: boolean) {
     const next = pending;
@@ -322,6 +463,7 @@
     error = '';
     modalName = '';
     modalDescription = '';
+    if (kind === 'newProject') modelNotation = 'IDEF0';
     modal = kind;
     closeMenus();
   }
@@ -332,7 +474,10 @@
     await guard(async () => {
       if (!snapshot) return;
       if (client.desktop) {
-        if (await run(() => client.open(snapshot!.revision), 'Проект открыт')) resetViews();
+        if (await run(() => client.open(snapshot!.revision), 'Проект открыт')) {
+          enterEditor();
+          rememberCurrent();
+        }
       } else fileInput.click();
     });
   }
@@ -341,7 +486,7 @@
       file = input.files?.[0];
     input.value = '';
     if (!file || !snapshot) return;
-    (await run(
+    const imported = await run(
       async () => {
         if (file.size > 16 * 1024 * 1024) throw new Error('Размер проекта превышает 16 МБ.');
         const data: unknown = JSON.parse(await file.text());
@@ -350,7 +495,11 @@
       },
       'Открыт {0}',
       { 0: file.name },
-    )) && resetViews();
+    );
+    if (imported) {
+      enterEditor();
+      rememberCurrent();
+    }
   }
   async function submitCreate(event: SubmitEvent) {
     event.preventDefault();
@@ -360,12 +509,17 @@
     if (modal === 'newProject') {
       if (
         await run(
-          () => client.replace({ ...createProject(name), description }, snapshot!.revision),
+          () =>
+            client.replace(
+              createProjectWithDiagram(name, modelNotation, description),
+              snapshot!.revision,
+            ),
           'Новый проект создан',
         )
       ) {
         modal = null;
-        resetViews();
+        enterEditor();
+        rememberCurrent();
       }
     } else if (modal === 'newModel') {
       const id = newId();
@@ -626,15 +780,15 @@
     const mod = event.ctrlKey || event.metaKey;
     if (mod && ['s', 'o', 'n', 'k'].includes(event.key.toLowerCase())) {
       event.preventDefault();
-      if (event.key.toLowerCase() === 's') void save(event.shiftKey);
-      if (event.key.toLowerCase() === 'o') void requestOpen();
-      if (event.key.toLowerCase() === 'n') void requestNew();
-      if (event.key.toLowerCase() === 'k') searchInput?.focus();
-    } else if (
-      mod &&
-      !editing &&
-      (event.key.toLowerCase() === 'z' || event.key.toLowerCase() === 'y')
-    ) {
+      const key = event.key.toLowerCase();
+      if (key === 's' && screen === 'editor') void save(event.shiftKey);
+      if (key === 'o') void requestOpen();
+      if (key === 'n') void requestNew();
+      if (key === 'k' && screen === 'editor') searchInput?.focus();
+      return;
+    }
+    if (screen !== 'editor') return;
+    if (mod && !editing && (event.key.toLowerCase() === 'z' || event.key.toLowerCase() === 'y')) {
       event.preventDefault();
       void undoRedo(event.shiftKey || event.key.toLowerCase() === 'y' ? 'redo' : 'undo');
     } else if (event.key === 'Delete' && !editing && selectedId) requestDelete();
@@ -657,7 +811,7 @@
       try {
         snapshot = await client.initialize();
         if (disposed) return;
-        resetViews();
+        recents = readRecentProjects();
         status = 'Готов к работе';
         if (client.desktop) {
           const { listen } = await import('@tauri-apps/api/event');
@@ -708,686 +862,754 @@
   bind:this={fileInput}
   onchange={importFile}
 />
+<input
+  class="visually-hidden"
+  tabindex="-1"
+  aria-label={$t('Открыть модель Ramus')}
+  type="file"
+  accept=".rsf,.RSF"
+  bind:this={ramusInput}
+  onchange={importRamusFile}
+/>
 
-<div class="app-shell" class:without-inspector={!inspector} aria-busy={busy}>
-  <header class="app-header">
-    <a
-      class="brand"
-      href="/"
-      onclick={(event) => {
-        event.preventDefault();
-        selectedId = null;
-      }}
-      aria-label={$t('Tamus — свойства проекта')}
-    >
-      Tamus</a
-    >
+{#if screen === 'welcome'}
+  <Welcome
+    {recents}
+    busy={busy || !snapshot}
+    {error}
+    onCreate={requestNew}
+    onOpen={requestOpen}
+    onOpenRamus={requestRamus}
+    onOpenRecent={openRecent}
+    onRemoveRecent={removeRecent}
+    onSettings={() => {
+      closeMenus();
+      modal = 'settings';
+    }}
+    onHelp={() => {
+      closeMenus();
+      modal = 'help';
+    }}
+    onClose={() => void requestExit()}
+    onError={(message) => (error = message)}
+    onClearError={() => (error = '')}
+  />
+{:else}
+  <div class="app-shell" class:without-inspector={!inspector} aria-busy={busy}>
+    <header class="app-header">
+      <a
+        class="brand"
+        href="/"
+        onclick={(event) => {
+          event.preventDefault();
+          void requestHome();
+        }}
+        aria-label={$t('Tamus — главный экран')}
+      >
+        Tamus</a
+      >
 
-    <nav class="app-menu" aria-label={$t('Главное меню')}>
-      <details name="main-menu">
-        <summary
-          onclick={(event) => {
-            const current = event.currentTarget.parentElement;
-            document.querySelectorAll('.app-menu details[open]').forEach((item) => {
-              if (item !== current) item.removeAttribute('open');
-            });
-          }}>{$t('Файл')}</summary
+      <nav class="app-menu" aria-label={$t('Главное меню')}>
+        <details name="main-menu">
+          <summary
+            onclick={(event) => {
+              const current = event.currentTarget.parentElement;
+              document.querySelectorAll('.app-menu details[open]').forEach((item) => {
+                if (item !== current) item.removeAttribute('open');
+              });
+            }}>{$t('Файл')}</summary
+          >
+          <div class="menu-popover">
+            <button onclick={requestHome} disabled={busy}><span>{$t('Главный экран')}</span></button
+            >
+            <hr />
+            <button onclick={requestNew} disabled={busy}
+              ><span>{$t('Новый проект')}</span><kbd>Ctrl N</kbd></button
+            ><button onclick={requestOpen} disabled={busy}
+              ><span>{$t('Открыть…')}</span><kbd>Ctrl O</kbd></button
+            ><button onclick={requestRamus} disabled={busy}
+              ><span>{$t('Импорт Ramus…')}</span></button
+            ><button onclick={() => void exportRamus()} disabled={busy || !snapshot}
+              ><span>{$t('Экспорт в Ramus…')}</span></button
+            >
+            <hr />
+            <button onclick={() => save()} disabled={busy || !snapshot}
+              ><span>{$t('Сохранить')}</span><kbd>Ctrl S</kbd></button
+            ><button onclick={() => save(true)} disabled={busy || !snapshot}
+              >{$t('Сохранить как…')}</button
+            >{#if client.desktop}<hr />
+              <button onclick={requestExit}>{$t('Выход')}</button>{/if}
+          </div>
+        </details>
+        <details name="main-menu">
+          <summary
+            onclick={(event) => {
+              const current = event.currentTarget.parentElement;
+              document.querySelectorAll('.app-menu details[open]').forEach((item) => {
+                if (item !== current) item.removeAttribute('open');
+              });
+            }}>{$t('Правка')}</summary
+          >
+          <div class="menu-popover">
+            <button onclick={() => undoRedo('undo')} disabled={busy || !snapshot?.canUndo}
+              ><span>{$t('Отменить')}</span><kbd>Ctrl Z</kbd></button
+            ><button onclick={() => undoRedo('redo')} disabled={busy || !snapshot?.canRedo}
+              ><span>{$t('Повторить')}</span><kbd>Ctrl Y</kbd></button
+            >
+            <hr />
+            <button
+              onclick={() => {
+                closeMenus();
+                requestDelete();
+              }}
+              disabled={!activeTab || busy}>{$t('Удалить объект…')}</button
+            >
+          </div>
+        </details>
+        <details name="main-menu">
+          <summary
+            onclick={(event) => {
+              const current = event.currentTarget.parentElement;
+              document.querySelectorAll('.app-menu details[open]').forEach((item) => {
+                if (item !== current) item.removeAttribute('open');
+              });
+            }}>{$t('Вид')}</summary
+          >
+          <div class="menu-popover">
+            <button onclick={() => changeWorkspace('model')}>{$t('Диаграммы')}</button
+            >{#if advancedMode}<button onclick={() => changeWorkspace('qualifier')}
+                >{$t('Классификаторы')}</button
+              >{/if}
+            <button
+              onclick={() => {
+                closeMenus();
+                modal = 'settings';
+              }}>{$t('Настройки…')}</button
+            >
+            <hr />
+            <button
+              onclick={() => {
+                inspector = !inspector;
+                closeMenus();
+              }}>{$t(inspector ? 'Скрыть свойства' : 'Показать свойства')}</button
+            >
+          </div>
+        </details>
+        <button
+          onclick={() => {
+            closeMenus();
+            modal = 'help';
+          }}
+          class="menu-help">{$t('Помощь')}</button
         >
-        <div class="menu-popover">
-          <button onclick={requestNew} disabled={busy}
-            ><span>{$t('Новый проект')}</span><kbd>Ctrl N</kbd></button
-          ><button onclick={requestOpen} disabled={busy}
-            ><span>{$t('Открыть…')}</span><kbd>Ctrl O</kbd></button
-          >
-          <hr />
-          <button onclick={() => save()} disabled={busy || !snapshot}
-            ><span>{$t('Сохранить')}</span><kbd>Ctrl S</kbd></button
-          ><button onclick={() => save(true)} disabled={busy || !snapshot}
-            >{$t('Сохранить как…')}</button
-          >{#if client.desktop}<hr />
-            <button onclick={requestExit}>{$t('Выход')}</button>{/if}
-        </div>
-      </details>
-      <details name="main-menu">
-        <summary
-          onclick={(event) => {
-            const current = event.currentTarget.parentElement;
-            document.querySelectorAll('.app-menu details[open]').forEach((item) => {
-              if (item !== current) item.removeAttribute('open');
-            });
-          }}>{$t('Правка')}</summary
+      </nav>
+      <div class="header-spacer" data-tauri-drag-region></div>
+      <span class="version-badge">0.1.0</span>
+      <WindowControls onclose={() => void requestExit()} onerror={(message) => (error = message)} />
+    </header>
+
+    <div class="global-toolbar">
+      <div class="tool-group">
+        <button class="tool-button" onclick={requestNew} disabled={busy}
+          ><Icon name="plus" /><span>{$t('Новый')}</span></button
+        ><button class="tool-button" onclick={requestOpen} disabled={busy}
+          ><Icon name="folderOpen" /><span>{$t('Открыть')}</span></button
+        ><button class="tool-button save-button" onclick={() => save()} disabled={busy || !snapshot}
+          ><Icon name="save" /><span>{$t('Сохранить')}</span>{#if snapshot?.dirty}<span
+              class="unsaved-dot"
+            ></span>{/if}</button
+        ><span class="tool-divider"></span><button
+          class="icon-button"
+          aria-label={$t('Отменить')}
+          title={$t('Отменить (Ctrl+Z)')}
+          onclick={() => undoRedo('undo')}
+          disabled={busy || !snapshot?.canUndo}><Icon name="undo" /></button
+        ><button
+          class="icon-button"
+          aria-label={$t('Повторить')}
+          title={$t('Повторить (Ctrl+Y)')}
+          onclick={() => undoRedo('redo')}
+          disabled={busy || !snapshot?.canRedo}><Icon name="redo" /></button
         >
-        <div class="menu-popover">
-          <button onclick={() => undoRedo('undo')} disabled={busy || !snapshot?.canUndo}
-            ><span>{$t('Отменить')}</span><kbd>Ctrl Z</kbd></button
-          ><button onclick={() => undoRedo('redo')} disabled={busy || !snapshot?.canRedo}
-            ><span>{$t('Повторить')}</span><kbd>Ctrl Y</kbd></button
-          >
-          <hr />
-          <button
-            onclick={() => {
-              closeMenus();
-              requestDelete();
-            }}
-            disabled={!activeTab || busy}>{$t('Удалить объект…')}</button
-          >
-        </div>
-      </details>
-      <details name="main-menu">
-        <summary
-          onclick={(event) => {
-            const current = event.currentTarget.parentElement;
-            document.querySelectorAll('.app-menu details[open]').forEach((item) => {
-              if (item !== current) item.removeAttribute('open');
-            });
-          }}>{$t('Вид')}</summary
-        >
-        <div class="menu-popover">
-          <button onclick={() => changeWorkspace('model')}>{$t('Диаграммы')}</button
-          >{#if advancedMode}<button onclick={() => changeWorkspace('qualifier')}
-              >{$t('Классификаторы')}</button
-            >{/if}
-          <button
-            onclick={() => {
-              closeMenus();
-              modal = 'settings';
-            }}>{$t('Настройки…')}</button
-          >
-          <hr />
-          <button
-            onclick={() => {
-              inspector = !inspector;
-              closeMenus();
-            }}>{$t(inspector ? 'Скрыть свойства' : 'Показать свойства')}</button
-          >
-        </div>
-      </details>
+      </div>
+      <div class="toolbar-project">
+        <span class="project-status-dot"></span><span
+          >{project?.name ?? $t('Загрузка проекта')}</span
+        >{#if !snapshot?.path}<span class="tag">{$t('Локальный')}</span>{/if}
+      </div>
       <button
+        class="icon-button"
+        class:pressed={inspector}
+        title={$t('Панель свойств')}
+        aria-label={$t('Панель свойств')}
+        aria-pressed={inspector}
+        onclick={() => (inspector = !inspector)}><Icon name="panel" /></button
+      >
+    </div>
+
+    <aside class="activity-rail" aria-label={$t('Разделы')}>
+      <button
+        class:active={workspace === 'model'}
+        aria-label={$t('Диаграммы')}
+        title={$t('Диаграммы')}
+        onclick={() => changeWorkspace('model')}
+        ><Icon name="model" size={22} /><span>{$t('Схемы')}</span></button
+      >
+      {#if advancedMode}<button
+          class:active={workspace === 'qualifier'}
+          aria-label={$t('Классификаторы')}
+          title={$t('Классификаторы')}
+          onclick={() => changeWorkspace('qualifier')}
+          ><Icon name="table" size={22} /><span>{$t('Данные')}</span></button
+        >{/if}
+      <div class="rail-spacer"></div>
+      <button
+        aria-label={$t('Настройки')}
+        title={$t('Настройки и расширенный режим')}
         onclick={() => {
           closeMenus();
-          modal = 'help';
-        }}
-        class="menu-help">{$t('Помощь')}</button
+          modal = 'settings';
+        }}><Icon name="settings" size={21} /><span>{$t('Настройки')}</span></button
       >
-    </nav>
-    <div class="header-spacer" data-tauri-drag-region></div>
-    <span class="version-badge">0.1</span>
-    <WindowControls onclose={() => void requestExit()} onerror={(message) => (error = message)} />
-  </header>
-
-  <div class="global-toolbar">
-    <div class="tool-group">
-      <button class="tool-button" onclick={requestNew} disabled={busy}
-        ><Icon name="plus" /><span>{$t('Новый')}</span></button
-      ><button class="tool-button" onclick={requestOpen} disabled={busy}
-        ><Icon name="folderOpen" /><span>{$t('Открыть')}</span></button
-      ><button class="tool-button save-button" onclick={() => save()} disabled={busy || !snapshot}
-        ><Icon name="save" /><span>{$t('Сохранить')}</span>{#if snapshot?.dirty}<span
-            class="unsaved-dot"
-          ></span>{/if}</button
-      ><span class="tool-divider"></span><button
-        class="icon-button"
-        aria-label={$t('Отменить')}
-        title={$t('Отменить (Ctrl+Z)')}
-        onclick={() => undoRedo('undo')}
-        disabled={busy || !snapshot?.canUndo}><Icon name="undo" /></button
-      ><button
-        class="icon-button"
-        aria-label={$t('Повторить')}
-        title={$t('Повторить (Ctrl+Y)')}
-        onclick={() => undoRedo('redo')}
-        disabled={busy || !snapshot?.canRedo}><Icon name="redo" /></button
+      <button
+        aria-label={$t('О программе и горячие клавиши')}
+        title={$t('Справка')}
+        onclick={() => (modal = 'help')}
+        ><Icon name="help" size={21} /><span>{$t('Справка')}</span></button
       >
-    </div>
-    <div class="toolbar-project">
-      <span class="project-status-dot"></span><span>{project?.name ?? $t('Загрузка проекта')}</span
-      >{#if !snapshot?.path}<span class="tag">{$t('Локальный')}</span>{/if}
-    </div>
-    <button
-      class="icon-button"
-      class:pressed={inspector}
-      title={$t('Панель свойств')}
-      aria-label={$t('Панель свойств')}
-      aria-pressed={inspector}
-      onclick={() => (inspector = !inspector)}><Icon name="panel" /></button
-    >
-  </div>
+    </aside>
 
-  <aside class="activity-rail" aria-label={$t('Разделы')}>
-    <button
-      class:active={workspace === 'model'}
-      aria-label={$t('Диаграммы')}
-      title={$t('Диаграммы')}
-      onclick={() => changeWorkspace('model')}
-      ><Icon name="model" size={22} /><span>{$t('Схемы')}</span></button
-    >
-    {#if advancedMode}<button
-        class:active={workspace === 'qualifier'}
-        aria-label={$t('Классификаторы')}
-        title={$t('Классификаторы')}
-        onclick={() => changeWorkspace('qualifier')}
-        ><Icon name="table" size={22} /><span>{$t('Данные')}</span></button
-      >{/if}
-    <div class="rail-spacer"></div>
-    <button
-      aria-label={$t('Настройки')}
-      title={$t('Настройки и расширенный режим')}
-      onclick={() => {
-        closeMenus();
-        modal = 'settings';
-      }}><Icon name="settings" size={21} /><span>{$t('Настройки')}</span></button
-    >
-    <button
-      aria-label={$t('О программе и горячие клавиши')}
-      title={$t('Справка')}
-      onclick={() => (modal = 'help')}
-      ><Icon name="help" size={21} /><span>{$t('Справка')}</span></button
-    >
-  </aside>
-
-  <aside class="project-sidebar">
-    <header class="sidebar-header">
-      <span>{$t('ОБОЗРЕВАТЕЛЬ')}</span><span class="sidebar-label">{$t('ПРОЕКТ')}</span>
-    </header>
-    <div class="sidebar-search">
-      <Icon name="search" size={15} /><input
-        bind:this={searchInput}
-        bind:value={filter}
-        placeholder={$t('Найти в проекте…')}
-        aria-label={$t('Поиск в проекте')}
-      /><kbd>Ctrl K</kbd>{#if filter}<button
-          class="clear-search"
-          aria-label={$t('Очистить поиск')}
-          onclick={() => (filter = '')}><Icon name="close" size={13} /></button
-        >{/if}
-    </div>
-    <button
-      class="project-root"
-      onclick={() => {
-        activeId = null;
-        selectedId = null;
-        inspector = true;
-      }}
-      ><span class="root-folder"><Icon name="folder" size={18} /></span><span
-        >{project?.name ?? $t('Проект')}</span
-      ></button
-    >
-    <div class="sidebar-tree">
-      <div class="tree-group-header">
-        <button
-          class="tree-group-toggle"
-          onclick={() => (modelsExpanded = !modelsExpanded)}
-          aria-expanded={modelsExpanded}
-          ><span class:expanded={modelsExpanded} class="tree-chevron"
-            ><Icon name="chevron" size={13} /></span
-          ><span>{$t('Модели')}</span><span class="count">{modelCount}</span></button
-        ><button
-          class="tree-add"
-          title={$t('Создать модель')}
-          aria-label={$t('Создать модель')}
-          disabled={busy || !project}
-          onclick={() => showCreate('newModel')}><Icon name="plus" size={15} /></button
-        >
+    <aside class="project-sidebar">
+      <header class="sidebar-header">
+        <span>{$t('ОБОЗРЕВАТЕЛЬ')}</span><span class="sidebar-label">{$t('ПРОЕКТ')}</span>
+      </header>
+      <div class="sidebar-search">
+        <Icon name="search" size={15} /><input
+          bind:this={searchInput}
+          bind:value={filter}
+          placeholder={$t('Найти в проекте…')}
+          aria-label={$t('Поиск в проекте')}
+        /><kbd>Ctrl K</kbd>{#if filter}<button
+            class="clear-search"
+            aria-label={$t('Очистить поиск')}
+            onclick={() => (filter = '')}><Icon name="close" size={13} /></button
+          >{/if}
       </div>
-      {#if modelsExpanded}{#each visibleModels as row}<button
-            class="tree-item"
-            class:active={(row.childId ?? row.modelId) === activeId &&
-              (!row.blockId || row.childId ? !selectedId : selectedId === row.blockId)}
-            style:padding-left={`${18 + row.depth * 15}px`}
-            title={row.blockId ? $t('Функция: Ctrl+щелчок — декомпозиция') : $t('Модель')}
-            onclick={(event) => {
-              if (!row.blockId) {
-                navigateDiagram(row.modelId);
-                return;
-              }
-              if (row.childId && !event.ctrlKey && !event.metaKey) {
-                navigateDiagram(row.childId);
-                return;
-              }
-              navigateDiagram(row.modelId);
-              selectedId = row.blockId;
-              inspector = true;
-              if ((event.ctrlKey || event.metaKey) && model) {
-                const block = model.blocks.find((b) => b.id === row.blockId);
-                if (block) openDecomposition(block);
-              }
-            }}
-            ><Icon name={row.blockId ? 'block' : 'model'} size={17} /><span>{row.name}</span><span
-              class="tree-item-code">{row.node === 'Контекст' ? $t('Контекст') : row.node}</span
-            ></button
-          >
-        {/each}{#if !visibleModels.length}<p class="tree-empty">
-            {filter ? $t('Ничего не найдено') : $t('Добавьте первую модель')}
-          </p>{/if}{/if}
-      {#if advancedMode}<div class="tree-group-header qualifier-group">
+      <button
+        class="project-root"
+        onclick={() => {
+          activeId = null;
+          selectedId = null;
+          inspector = true;
+        }}
+        ><span class="root-folder"><Icon name="folder" size={18} /></span><span
+          >{project?.name ?? $t('Проект')}</span
+        ></button
+      >
+      <div class="sidebar-tree">
+        <div class="tree-group-header">
           <button
             class="tree-group-toggle"
-            onclick={() => (qualifiersExpanded = !qualifiersExpanded)}
-            aria-expanded={qualifiersExpanded}
-            ><span class:expanded={qualifiersExpanded} class="tree-chevron"
+            onclick={() => (modelsExpanded = !modelsExpanded)}
+            aria-expanded={modelsExpanded}
+            ><span class:expanded={modelsExpanded} class="tree-chevron"
               ><Icon name="chevron" size={13} /></span
-            ><span>{$t('Классификаторы')}</span><span class="count"
-              >{project?.qualifiers.length ?? 0}</span
-            ></button
+            ><span>{$t('Модели')}</span><span class="count">{modelCount}</span></button
           ><button
             class="tree-add"
-            title={$t('Создать классификатор')}
-            aria-label={$t('Создать классификатор')}
+            title={$t('Создать модель')}
+            aria-label={$t('Создать модель')}
             disabled={busy || !project}
-            onclick={() => showCreate('newQualifier')}><Icon name="plus" size={15} /></button
+            onclick={() => showCreate('newModel')}><Icon name="plus" size={15} /></button
           >
         </div>
-        {#if qualifiersExpanded}{#each visibleQualifiers as item}<button
+        {#if modelsExpanded}{#each visibleModels as row}<button
               class="tree-item"
-              class:active={activeId === item.id}
-              onclick={() => openTab(item.id, 'qualifier')}
-              ><Icon name="table" size={17} /><span>{item.name}</span><span class="tree-item-code"
-                >{item.elements.length}</span
+              class:active={(row.childId ?? row.modelId) === activeId &&
+                (!row.blockId || row.childId ? !selectedId : selectedId === row.blockId)}
+              style:padding-left={`${18 + row.depth * 15}px`}
+              title={row.blockId ? $t('Функция: Ctrl+щелчок — декомпозиция') : $t('Модель')}
+              onclick={(event) => {
+                if (!row.blockId) {
+                  navigateDiagram(row.modelId, event.ctrlKey || event.metaKey);
+                  return;
+                }
+                if (row.childId && !event.ctrlKey && !event.metaKey) {
+                  navigateDiagram(row.childId);
+                  return;
+                }
+                navigateDiagram(row.modelId);
+                selectedId = row.blockId;
+                inspector = true;
+                if ((event.ctrlKey || event.metaKey) && model) {
+                  const block = model.blocks.find((b) => b.id === row.blockId);
+                  if (block) openDecomposition(block, true);
+                }
+              }}
+              ><Icon name={row.blockId ? 'block' : 'model'} size={17} /><span>{row.name}</span><span
+                class="tree-item-code">{row.node === 'Контекст' ? $t('Контекст') : row.node}</span
               ></button
-            >{/each}{#if !visibleQualifiers.length}<p class="tree-empty">
-              {filter ? $t('Ничего не найдено') : $t('Добавьте первый классификатор')}
+            >
+          {/each}{#if !visibleModels.length}<p class="tree-empty">
+              {filter ? $t('Ничего не найдено') : $t('Добавьте первую модель')}
             </p>{/if}{/if}
-      {/if}
-    </div>
-    <div class="sidebar-bottom">
-      <div>
-        <Icon name="layers" size={15} /><span
-          >{$count('model', modelCount)}{#if advancedMode}
-            · {$count('item', totalElements)}{/if}</span
+        {#if advancedMode}<div class="tree-group-header qualifier-group">
+            <button
+              class="tree-group-toggle"
+              onclick={() => (qualifiersExpanded = !qualifiersExpanded)}
+              aria-expanded={qualifiersExpanded}
+              ><span class:expanded={qualifiersExpanded} class="tree-chevron"
+                ><Icon name="chevron" size={13} /></span
+              ><span>{$t('Классификаторы')}</span><span class="count"
+                >{project?.qualifiers.length ?? 0}</span
+              ></button
+            ><button
+              class="tree-add"
+              title={$t('Создать классификатор')}
+              aria-label={$t('Создать классификатор')}
+              disabled={busy || !project}
+              onclick={() => showCreate('newQualifier')}><Icon name="plus" size={15} /></button
+            >
+          </div>
+          {#if qualifiersExpanded}{#each visibleQualifiers as item}<button
+                class="tree-item"
+                class:active={activeId === item.id}
+                onclick={() => openTab(item.id, 'qualifier')}
+                ><Icon name="table" size={17} /><span>{item.name}</span><span class="tree-item-code"
+                  >{item.elements.length}</span
+                ></button
+              >{/each}{#if !visibleQualifiers.length}<p class="tree-empty">
+                {filter ? $t('Ничего не найдено') : $t('Добавьте первый классификатор')}
+              </p>{/if}{/if}
+        {/if}
+      </div>
+      <div class="sidebar-bottom">
+        <div>
+          <Icon name="layers" size={15} /><span
+            >{$count('model', modelCount)}{#if advancedMode}
+              · {$count('item', totalElements)}{/if}</span
+          >
+        </div>
+        <span class="local-label"><span class="tiny-dot"></span>{$t('Локальное пространство')}</span
         >
       </div>
-      <span class="local-label"><span class="tiny-dot"></span>{$t('Локальное пространство')}</span>
-    </div>
-  </aside>
+    </aside>
 
-  <main class="workspace">
-    <div class="document-tabs" aria-label={$t('Открытые документы')}>
-      {#each tabs as tab}<div class="document-tab" class:active={activeId === tab.id}>
-          <button class="tab-main" onclick={() => openTab(tab.id, tab.kind)}
-            ><Icon name={tab.kind === 'model' ? 'model' : 'table'} size={16} /><span
-              >{tab.kind === 'model'
-                ? project?.models.find((m) => m.id === tab.id)?.name
-                : project?.qualifiers.find((q) => q.id === tab.id)?.name}</span
-            ></button
-          ><button
-            class="tab-close"
-            aria-label={$t('Закрыть вкладку')}
-            onclick={() => closeTab(tab.id)}><Icon name="close" size={13} /></button
+    <main class="workspace">
+      <div class="document-tabs" role="list" aria-label={$t('Открытые документы')}>
+        {#each tabs as tab}          <div
+            class="document-tab"
+            role="listitem"
+            class:active={activeId === tab.id}
+            class:dragging={draggedTabId === tab.id}
+            class:drag-over={tabDropTarget === tab.id && draggedTabId !== tab.id}
+            ondragover={(event) => dragTabOver(event, tab)}
+            ondrop={(event) => dropTab(event, tab)}
           >
-        </div>{/each}<button
-        class="new-tab"
-        aria-label={$t('Добавить документ')}
-        title={$t('Добавить документ')}
-        onclick={() => showCreate(workspace === 'model' ? 'newModel' : 'newQualifier')}
-        disabled={busy || !project}><Icon name="plus" size={17} /></button
-      >
-    </div>
-    {#if error}<div class="error-banner" role="alert">
-        <Icon name="info" size={18} /><span>{$t(error)}</span><button
-          class="icon-button"
-          aria-label={$t('Закрыть сообщение')}
-          onclick={() => (error = '')}><Icon name="close" size={15} /></button
-        >
-      </div>{/if}
-    {#if project && activeTab && (model || qualifier)}
-      <header class="document-header">
-        <div class="breadcrumbs">
-          <span>{$t('Проект')}</span><Icon name="chevron" size={12} /><span
-            >{model ? $t('Модели') : $t('Классификаторы')}</span
-          ><Icon name="chevron" size={12} /><span class="breadcrumb-current">{activeTitle}</span>
-        </div>
-        {#if ancestors.length}<nav class="diagram-ancestors" aria-label={$t('Уровни декомпозиции')}>
-            {#each ancestors as ancestor}<button onclick={() => openTab(ancestor.id, 'model')}
-                >{project
-                  ? diagramNode(project, ancestor) === 'Контекст'
-                    ? $t('Контекст')
-                    : diagramNode(project, ancestor)
-                  : ''} · {ancestor.name}</button
-              ><span>›</span>{/each}
             <span
-              >{project && model
-                ? diagramNode(project, model) === 'Контекст'
-                  ? $t('Контекст')
-                  : diagramNode(project, model)
-                : ''}</span
-            >
-          </nav>{/if}
-        <div class="document-title-row">
-          <div>
-            <span class="eyebrow">{model ? $t('ДИАГРАММА ПРОЦЕССА') : $t('ДАННЫЕ ПРОЕКТА')}</span>
-            <h1>{activeTitle}</h1>
-          </div>
-          <span class="notation-tag"
-            >{model ? model.notation : $count('item', qualifier?.elements.length ?? 0)}</span
-          >
-        </div>
-      </header>
-      {#if model}
-        <Diagram
-          {model}
-          project={project!}
-          onedit={editDiagramObject}
-          ondelete={deleteDiagramObject}
-          oncenter={(blockId) => {
-            if (model)
-              void apply(
-                { kind: 'centerArrows', modelId: model.id, ...(blockId ? { blockId } : {}) },
-                'Присоединения стрелок центрированы',
-              );
-          }}
-          node={project ? diagramNode(project, model) : 'A0'}
-          context={project && parent ? diagramNode(project, parent) : diagramSheet(model).context}
-          hasParent={!!parent}
-          interfaces={project ? boundaryPorts(project, model) : []}
-          childBlockIds={project?.models.flatMap((m) =>
-            m.parentBlockId ? [m.parentBlockId] : [],
-          ) ?? []}
-          onopen={openDecomposition}
-          onparent={() => {
-            if (parent) navigateDiagram(parent.id);
-          }}
-          ondraw={drawFlow}
-          projectName={project?.name ?? ''}
-          onproperties={() => {
-            selectedId = null;
-            inspector = true;
-          }}
-          {busy}
-          {selectedId}
-          onselect={(id) => {
-            selectedId = id;
-            inspector = true;
-          }}
-          onmove={(block) => {
-            if (model)
-              void apply(
-                { kind: 'updateBlock', modelId: model.id, block },
-                'Положение блока изменено',
-              );
-          }}
-          onadd={addBlock}
-          onflow={addFlow}
-        />
-      {:else if qualifier}
-        <div class="table-toolbar">
-          <div class="tool-group">
-            <button class="button primary small" onclick={addElement} disabled={busy}
-              ><Icon name="plus" size={16} />{$t('Добавить элемент')}</button
+              class="tab-grip"
+              draggable="true"
+              role="button"
+              tabindex="-1"
+              aria-label={$t('Перетащите вкладку')}
+              title={$t('Перетащите вкладку')}
+              ondragstart={(event) => startTabDrag(event, tab)}
+              ondragend={endTabDrag}>⋮</span
+            ><button class="tab-main" onclick={() => openTab(tab.id, tab.kind)}
+              ><Icon name={tab.kind === 'model' ? 'model' : 'table'} size={15} /><span
+                >{tab.kind === 'model'
+                  ? project?.models.find((m) => m.id === tab.id)?.name
+                  : project?.qualifiers.find((q) => q.id === tab.id)?.name}</span
+              ></button
             ><button
-              class="icon-button"
-              aria-label={$t('Удалить выбранный элемент')}
-              disabled={!element || busy}
-              onclick={requestDelete}><Icon name="trash" size={17} /></button
+              class="tab-close"
+              aria-label={$t('Закрыть вкладку')}
+              onclick={() => closeTab(tab.id)}><Icon name="close" size={13} /></button
+            >
+          </div>{/each}<button
+          class="new-tab"
+          aria-label={$t('Добавить документ')}
+          title={$t('Добавить документ')}
+          onclick={() => showCreate(workspace === 'model' ? 'newModel' : 'newQualifier')}
+          disabled={busy || !project}><Icon name="plus" size={17} /></button
+        >
+      </div>
+      {#if error}<div class="error-banner" role="alert">
+          <Icon name="info" size={18} /><span>{$t(error)}</span><button
+            class="icon-button"
+            aria-label={$t('Закрыть сообщение')}
+            onclick={() => (error = '')}><Icon name="close" size={15} /></button
+          >
+        </div>{/if}
+      {#if project && activeTab && (model || qualifier)}
+        <header class="document-header">
+          <div class="breadcrumbs">
+            <span>{$t('Проект')}</span><Icon name="chevron" size={12} /><span
+              >{model ? $t('Модели') : $t('Классификаторы')}</span
+            ><Icon name="chevron" size={12} /><span class="breadcrumb-current">{activeTitle}</span>
+          </div>
+          {#if ancestors.length}<nav
+              class="diagram-ancestors"
+              aria-label={$t('Уровни декомпозиции')}
+            >
+              {#each ancestors as ancestor}<button onclick={() => openTab(ancestor.id, 'model')}
+                  >{project
+                    ? diagramNode(project, ancestor) === 'Контекст'
+                      ? $t('Контекст')
+                      : diagramNode(project, ancestor)
+                    : ''} · {ancestor.name}</button
+                ><span>›</span>{/each}
+              <span
+                >{project && model
+                  ? diagramNode(project, model) === 'Контекст'
+                    ? $t('Контекст')
+                    : diagramNode(project, model)
+                  : ''}</span
+              >
+            </nav>{/if}
+          <div class="document-title-row">
+            <div>
+              <span class="eyebrow">{model ? $t('ДИАГРАММА ПРОЦЕССА') : $t('ДАННЫЕ ПРОЕКТА')}</span>
+              <h1>{activeTitle}</h1>
+            </div>
+            <span class="notation-tag"
+              >{model ? model.notation : $count('item', qualifier?.elements.length ?? 0)}</span
             >
           </div>
-          <button
-            class="tool-button sort-button"
-            class:pressed={sortByName}
-            onclick={() => (sortByName = !sortByName)}
-            aria-pressed={sortByName}><Icon name="table" size={15} />{$t('По названию')}</button
-          >
-        </div>
-        <div class="table-scroll">
-          <table class="elements-table">
-            <thead
-              ><tr
-                ><th class="row-code">{$t('Код')}</th><th
-                  >{$t('Название')} <span class="column-type">{$t('Строка')}</span></th
-                ><th>{$t('Описание')} <span class="column-type">{$t('Строка')}</span></th></tr
-              ></thead
-            ><tbody
-              >{#each visibleElements as row}<tr class:selected={selectedId === row.id}
-                  ><td class="row-code"
-                    >{String(qualifier.elements.findIndex((e) => e.id === row.id) + 1).padStart(
-                      2,
-                      '0',
-                    )}</td
-                  ><td
-                    ><button
-                      class="element-name"
-                      onclick={() => {
-                        selectedId = row.id;
-                        inspector = true;
-                      }}
-                      ><span class="element-icon"><Icon name="file" size={16} /></span
-                      >{row.name}</button
-                    ></td
-                  ><td class="element-description">{row.description || '—'}</td></tr
-                >{/each}</tbody
+        </header>
+        {#if model}
+          <Diagram
+            {model}
+            project={project!}
+            onedit={editDiagramObject}
+            ondelete={deleteDiagramObject}
+            oncenter={(blockId) => {
+              if (model)
+                void apply(
+                  { kind: 'centerArrows', modelId: model.id, ...(blockId ? { blockId } : {}) },
+                  'Присоединения стрелок центрированы',
+                );
+            }}
+            node={project ? diagramNode(project, model) : 'A0'}
+            context={project && parent ? diagramNode(project, parent) : diagramSheet(model).context}
+            hasParent={!!parent}
+            interfaces={project ? boundaryPorts(project, model) : []}
+            childBlockIds={project?.models.flatMap((m) =>
+              m.parentBlockId ? [m.parentBlockId] : [],
+            ) ?? []}
+            onopen={openDecomposition}
+            onparent={() => {
+              if (parent) navigateDiagram(parent.id);
+            }}
+            ondraw={drawFlow}
+            projectName={project?.name ?? ''}
+            onproperties={() => {
+              selectedId = null;
+              inspector = true;
+            }}
+            {busy}
+            {selectedId}
+            onselect={(id) => {
+              selectedId = id;
+              inspector = true;
+            }}
+            onmove={(block) => {
+              if (model)
+                void apply(
+                  { kind: 'updateBlock', modelId: model.id, block },
+                  'Положение блока изменено',
+                );
+            }}
+            onadd={addBlock}
+            onflow={addFlow}
+            onmoveflow={(flow) => {
+              if (model)
+                void apply({ kind: 'updateFlow', modelId: model.id, flow }, 'Стрелка перемещена');
+            }}
+          />
+        {:else if qualifier}
+          <div class="table-toolbar">
+            <div class="tool-group">
+              <button class="button primary small" onclick={addElement} disabled={busy}
+                ><Icon name="plus" size={16} />{$t('Добавить элемент')}</button
+              ><button
+                class="icon-button"
+                aria-label={$t('Удалить выбранный элемент')}
+                disabled={!element || busy}
+                onclick={requestDelete}><Icon name="trash" size={17} /></button
+              >
+            </div>
+            <button
+              class="tool-button sort-button"
+              class:pressed={sortByName}
+              onclick={() => (sortByName = !sortByName)}
+              aria-pressed={sortByName}><Icon name="table" size={15} />{$t('По названию')}</button
             >
-          </table>
-          {#if !visibleElements.length}<div class="empty-state table-empty">
-              <Icon name="table" size={34} />
-              <h2>{filter ? $t('Ничего не найдено') : $t('Здесь будут элементы')}</h2>
-              <p>
-                {filter
-                  ? $t('Измените запрос в поиске проекта.')
-                  : $t('Добавьте первый элемент в классификатор.')}
-              </p>
-              {#if !filter}<button class="button" onclick={addElement} disabled={busy}
-                  ><Icon name="plus" size={16} />{$t('Добавить элемент')}</button
+          </div>
+          <div class="table-scroll">
+            <table class="elements-table">
+              <thead
+                ><tr
+                  ><th class="row-code">{$t('Код')}</th><th
+                    >{$t('Название')} <span class="column-type">{$t('Строка')}</span></th
+                  ><th>{$t('Описание')} <span class="column-type">{$t('Строка')}</span></th></tr
+                ></thead
+              ><tbody
+                >{#each visibleElements as row}<tr class:selected={selectedId === row.id}
+                    ><td class="row-code"
+                      >{String(qualifier.elements.findIndex((e) => e.id === row.id) + 1).padStart(
+                        2,
+                        '0',
+                      )}</td
+                    ><td
+                      ><button
+                        class="element-name"
+                        onclick={() => {
+                          selectedId = row.id;
+                          inspector = true;
+                        }}
+                        ><span class="element-icon"><Icon name="file" size={16} /></span
+                        >{row.name}</button
+                      ></td
+                    ><td class="element-description">{row.description || '—'}</td></tr
+                  >{/each}</tbody
+              >
+            </table>
+            {#if !visibleElements.length}<div class="empty-state table-empty">
+                <Icon name="table" size={34} />
+                <h2>{filter ? $t('Ничего не найдено') : $t('Здесь будут элементы')}</h2>
+                <p>
+                  {filter
+                    ? $t('Измените запрос в поиске проекта.')
+                    : $t('Добавьте первый элемент в классификатор.')}
+                </p>
+                {#if !filter}<button class="button" onclick={addElement} disabled={busy}
+                    ><Icon name="plus" size={16} />{$t('Добавить элемент')}</button
+                  >{/if}
+              </div>{/if}
+          </div>
+          <div class="table-footer">
+            <span
+              >{$t('Показано {visible} из {total}', {
+                visible: visibleElements.length,
+                total: qualifier.elements.length,
+              })}</span
+            ><span>{$t('Выберите элемент для редактирования свойств')}</span>
+          </div>
+        {/if}
+      {:else}
+        <div class="empty-state workspace-empty">
+          <span class="empty-illustration"><Icon name="model" size={42} /></span><span
+            class="eyebrow">{$t('ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО')}</span
+          >
+          <h1>
+            {project ? $t('От идеи — к понятной модели') : $t('Открываем рабочее пространство…')}
+          </h1>
+          <p>
+            {project
+              ? advancedMode
+                ? $t('Создайте модель процесса или классификатор.')
+                : $t('Создайте модель IDEF0 или DFD, чтобы начать работу.')
+              : $t('Подготавливаем проект и инструменты.')}
+          </p>
+          {#if project}<div class="empty-actions">
+              <button class="button primary" onclick={() => showCreate('newModel')}
+                ><Icon name="model" size={17} />{$t('Создать модель')}</button
+              >{#if advancedMode}<button class="button" onclick={() => showCreate('newQualifier')}
+                  ><Icon name="table" size={17} />{$t('Классификатор')}</button
                 >{/if}
             </div>{/if}
         </div>
-        <div class="table-footer">
-          <span
-            >{$t('Показано {visible} из {total}', {
-              visible: visibleElements.length,
-              total: qualifier.elements.length,
-            })}</span
-          ><span>{$t('Выберите элемент для редактирования свойств')}</span>
-        </div>
       {/if}
-    {:else}
-      <div class="empty-state workspace-empty">
-        <span class="empty-illustration"><Icon name="model" size={42} /></span><span class="eyebrow"
-          >{$t('ВАШЕ РАБОЧЕЕ ПРОСТРАНСТВО')}</span
-        >
-        <h1>
-          {project ? $t('От идеи — к понятной модели') : $t('Открываем рабочее пространство…')}
-        </h1>
-        <p>
-          {project
-            ? advancedMode
-              ? $t('Создайте модель процесса или классификатор.')
-              : $t('Создайте модель IDEF0 или DFD, чтобы начать работу.')
-            : $t('Подготавливаем проект и инструменты.')}
-        </p>
-        {#if project}<div class="empty-actions">
-            <button class="button primary" onclick={() => showCreate('newModel')}
-              ><Icon name="model" size={17} />{$t('Создать модель')}</button
-            >{#if advancedMode}<button class="button" onclick={() => showCreate('newQualifier')}
-                ><Icon name="table" size={17} />{$t('Классификатор')}</button
+    </main>
+
+    {#if inspector}<aside class="inspector">
+        <header class="inspector-header">
+          <span>{$t('Свойства')}</span><button
+            class="icon-button"
+            aria-label={$t('Скрыть свойства')}
+            onclick={() => (inspector = false)}><Icon name="panel" size={16} /></button
+          >
+        </header>
+        <div class="inspector-object">
+          <span class="inspector-object-icon"
+            ><Icon
+              name={flow ? 'arrow' : model ? 'block' : qualifier ? 'file' : 'folder'}
+              size={21}
+            /></span
+          >
+          <div>
+            <span>{entityType}</span><strong
+              >{flow && project
+                ? flowLabel(project, flow) || $t('Стрелка без подписи')
+                : (entity?.name ?? $t('Проект'))}</strong
+            >
+          </div>
+        </div>
+        {#if entity}<form class="properties-form" onsubmit={updateProperties}>
+            <div class="property-section-title">{$t('ОСНОВНОЕ')}</div>
+            <label for="property-name">{$t('Название')}</label><input
+              id="property-name"
+              bind:this={nameInput}
+              bind:value={draftName}
+              readonly={!!flow?.parentFlowId}
+              required={!flow}
+              maxlength="256"
+              disabled={busy}
+            />{#if !flow}<label for="property-description">{$t('Описание')}</label><textarea
+                id="property-description"
+                bind:value={draftDescription}
+                rows="5"
+                maxlength="10000"
+                placeholder={$t('Добавьте описание…')}
+                disabled={busy}></textarea>{:else}<div class="flow-properties">
+                <span>{$t('Из блока')}</span><strong
+                  >{model?.blocks.find((b) => b.id === flow.sourceId)?.name ??
+                    $t('Граница листа (I/C/M)')}</strong
+                ><Icon name="arrow" size={15} /><span>{$t('В блок')}</span><strong
+                  >{model?.blocks.find((b) => b.id === flow.targetId)?.name ??
+                    $t('Граница листа (O)')}</strong
+                >
+              </div>{/if}
+            {#if flow}<button
+                type="button"
+                class="button decomposition-action"
+                onclick={() => editDiagramObject(flow.id)}>{$t('Свойства стрелки / Поток…')}</button
+              >
+              <p class="inherited-note">
+                {$t('Объектов потока:')}
+                {flow.objectIds?.length ?? 0}
+              </p>{/if}
+            {#if flow && flow.targetId !== null}
+              <label for="flow-role"
+                >{model?.notation === 'DFD'
+                  ? $t('Сторона назначения')
+                  : $t('Входит в блок как')}</label
+              >
+              <select id="flow-role" bind:value={draftTargetSide} disabled={busy}>
+                <option value="left"
+                  >{model?.notation === 'DFD' ? $t('Слева') : $t('Вход (I) — слева')}</option
+                >{#if model?.notation === 'DFD'}<option value="right">{$t('Справа')}</option
+                  >{/if}<option value="top"
+                  >{model?.notation === 'DFD'
+                    ? $t('Сверху')
+                    : $t('Управление (C) — сверху')}</option
+                ><option value="bottom"
+                  >{model?.notation === 'DFD' ? $t('Снизу') : $t('Механизм (M) — снизу')}</option
+                >
+              </select>
+            {/if}
+            {#if flow?.parentFlowId}<p class="inherited-note">
+                {$t('Имя и граничный порт наследуются от стрелки родительского блока.')}
+              </p>{/if}
+            {#if block}<button
+                type="button"
+                class="button decomposition-action"
+                onclick={() => void openDecomposition(block)}
+                disabled={busy}>{$t('↓ Открыть декомпозицию')}</button
               >{/if}
-          </div>{/if}
-      </div>
-    {/if}
-  </main>
-
-  {#if inspector}<aside class="inspector">
-      <header class="inspector-header">
-        <span>{$t('Свойства')}</span><button
-          class="icon-button"
-          aria-label={$t('Скрыть свойства')}
-          onclick={() => (inspector = false)}><Icon name="panel" size={16} /></button
-        >
-      </header>
-      <div class="inspector-object">
-        <span class="inspector-object-icon"
-          ><Icon
-            name={flow ? 'arrow' : model ? 'block' : qualifier ? 'file' : 'folder'}
-            size={21}
-          /></span
-        >
-        <div>
-          <span>{entityType}</span><strong
-            >{flow && project
-              ? flowLabel(project, flow) || $t('Стрелка без подписи')
-              : (entity?.name ?? $t('Проект'))}</strong
-          >
-        </div>
-      </div>
-      {#if entity}<form class="properties-form" onsubmit={updateProperties}>
-          <div class="property-section-title">{$t('ОСНОВНОЕ')}</div>
-          <label for="property-name">{$t('Название')}</label><input
-            id="property-name"
-            bind:this={nameInput}
-            bind:value={draftName}
-            readonly={!!flow?.parentFlowId}
-            required={!flow}
-            maxlength="256"
-            disabled={busy}
-          />{#if !flow}<label for="property-description">{$t('Описание')}</label><textarea
-              id="property-description"
-              bind:value={draftDescription}
-              rows="5"
-              maxlength="10000"
-              placeholder={$t('Добавьте описание…')}
-              disabled={busy}></textarea>{:else}<div class="flow-properties">
-              <span>{$t('Из блока')}</span><strong
-                >{model?.blocks.find((b) => b.id === flow.sourceId)?.name ??
-                  $t('Граница листа (I/C/M)')}</strong
-              ><Icon name="arrow" size={15} /><span>{$t('В блок')}</span><strong
-                >{model?.blocks.find((b) => b.id === flow.targetId)?.name ??
-                  $t('Граница листа (O)')}</strong
-              >
-            </div>{/if}
-          {#if flow}<button
-              type="button"
-              class="button decomposition-action"
-              onclick={() => editDiagramObject(flow.id)}>{$t('Свойства стрелки / Поток…')}</button
-            >
-            <p class="inherited-note">
-              {$t('Объектов потока:')}
-              {flow.objectIds?.length ?? 0}
-            </p>{/if}
-          {#if flow && flow.targetId !== null}
-            <label for="flow-role"
-              >{model?.notation === 'DFD'
-                ? $t('Сторона назначения')
-                : $t('Входит в блок как')}</label
-            >
-            <select id="flow-role" bind:value={draftTargetSide} disabled={busy}>
-              <option value="left"
-                >{model?.notation === 'DFD' ? $t('Слева') : $t('Вход (I) — слева')}</option
-              >{#if model?.notation === 'DFD'}<option value="right">{$t('Справа')}</option
-                >{/if}<option value="top"
-                >{model?.notation === 'DFD' ? $t('Сверху') : $t('Управление (C) — сверху')}</option
-              ><option value="bottom"
-                >{model?.notation === 'DFD' ? $t('Снизу') : $t('Механизм (M) — снизу')}</option
-              >
-            </select>
-          {/if}
-          {#if flow?.parentFlowId}<p class="inherited-note">
-              {$t('Имя и граничный порт наследуются от стрелки родительского блока.')}
-            </p>{/if}
-          {#if block}<button
-              type="button"
-              class="button decomposition-action"
-              onclick={() => void openDecomposition(block)}
-              disabled={busy}>{$t('↓ Открыть декомпозицию')}</button
-            >{/if}
-          {#if model && !block && !flow}
-            <div class="paper-color-controls">
-              <label for="diagram-background">{$t('Фон листа')}</label><input
-                id="diagram-background"
-                type="color"
-                bind:value={draftBackground}
-              />
-              <button
-                type="button"
-                class="button small"
-                onclick={() => (draftBackground = '#ffffe8')}>{$t('Жёлтый')}</button
-              ><button
-                type="button"
-                class="button small"
-                onclick={() => (draftBackground = '#ffffff')}>{$t('Белый')}</button
-              >
-            </div>
-            <fieldset class="sheet-properties" disabled={busy}>
-              <legend>{$t('Штамп диаграммы')}</legend>
-              {#each sheetFields as [key, label]}
-                <label for={`sheet-${key}`}>{$t(label)}</label>
-                <input
-                  id={`sheet-${key}`}
-                  bind:value={draftSheet[key]}
-                  readonly={!!model?.parentBlockId && (key === 'node' || key === 'context')}
-                  maxlength="256"
+            {#if model && !block && !flow}
+              <div class="paper-color-controls">
+                <label for="diagram-background">{$t('Фон листа')}</label><input
+                  id="diagram-background"
+                  type="color"
+                  bind:value={draftBackground}
                 />
-              {/each}
-            </fieldset>
-          {/if}
-          {#if block}<div class="property-section-title geometry-title">{$t('ПОЛОЖЕНИЕ')}</div>
-            <div class="geometry-values">
-              <div><span>X</span><strong>{block.x}</strong></div>
-              <div><span>Y</span><strong>{block.y}</strong></div>
-            </div>{/if}
-          <button
-            class="button apply-properties"
-            type="submit"
-            disabled={busy ||
-              (!flow && !draftName.trim()) ||
-              (draftName.trim() === entity.name &&
-                draftDescription.trim() === ('description' in entity ? entity.description : '') &&
-                !sheetChanged &&
-                (!flow ||
-                  draftTargetSide ===
-                    (flow.targetSide ?? (flow.targetId === null ? 'right' : 'left'))))}
-            ><Icon name="check" size={16} />{$t('Применить')}</button
-          >
-        </form>
-        <div class="inspector-meta">
-          <div class="property-section-title">{$t('ИНФОРМАЦИЯ')}</div>
-          <dl>
-            <dt>{$t('Тип')}</dt>
-            <dd>{entityType}</dd>
-            {#if model}<dt>{$t('Нотация')}</dt>
-              <dd>{model.notation}</dd>
-              <dt>{$t('Блоков')}</dt>
-              <dd>{model.blocks.length}</dd>{:else if qualifier}<dt>{$t('Элементов')}</dt>
-              <dd>{qualifier.elements.length}</dd>{/if}
-            <dt>ID</dt>
-            <dd class="entity-id" title={entity.id}>{entity.id}</dd>
-          </dl>
-        </div>
-        {#if activeTab}<div class="inspector-danger">
-            <button class="tool-button danger" onclick={requestDelete} disabled={busy}
-              ><Icon name="trash" size={16} />{$t('Удалить')}
-              {block
-                ? $t('блок')
-                : flow
-                  ? $t('связь')
-                  : element
-                    ? $t('элемент')
-                    : model
-                      ? $t('модель')
-                      : $t('классификатор')}</button
+                <button
+                  type="button"
+                  class="button small"
+                  onclick={() => (draftBackground = '#ffffe8')}>{$t('Жёлтый')}</button
+                ><button
+                  type="button"
+                  class="button small"
+                  onclick={() => (draftBackground = '#ffffff')}>{$t('Белый')}</button
+                >
+              </div>
+              <fieldset class="sheet-properties" disabled={busy}>
+                <legend>{$t('Штамп диаграммы')}</legend>
+                {#each sheetFields as [key, label]}
+                  <label for={`sheet-${key}`}>{$t(label)}</label>
+                  <input
+                    id={`sheet-${key}`}
+                    bind:value={draftSheet[key]}
+                    readonly={!!model?.parentBlockId && (key === 'node' || key === 'context')}
+                    maxlength="256"
+                  />
+                {/each}
+              </fieldset>
+            {/if}
+            {#if block}<div class="property-section-title geometry-title">{$t('ПОЛОЖЕНИЕ')}</div>
+              <div class="geometry-values">
+                <div><span>X</span><strong>{block.x}</strong></div>
+                <div><span>Y</span><strong>{block.y}</strong></div>
+              </div>{/if}
+            <button
+              class="button apply-properties"
+              type="submit"
+              disabled={busy ||
+                (!flow && !draftName.trim()) ||
+                (draftName.trim() === entity.name &&
+                  draftDescription.trim() === ('description' in entity ? entity.description : '') &&
+                  !sheetChanged &&
+                  (!flow ||
+                    draftTargetSide ===
+                      (flow.targetSide ?? (flow.targetId === null ? 'right' : 'left'))))}
+              ><Icon name="check" size={16} />{$t('Применить')}</button
             >
-          </div>{/if}{/if}
-      <div class="inspector-note">
-        <Icon name="info" size={16} />
-        <p>{$t('Выберите объект в рабочей области, чтобы изменить его свойства.')}</p>
-      </div>
-    </aside>{/if}
+          </form>
+          <div class="inspector-meta">
+            <div class="property-section-title">{$t('ИНФОРМАЦИЯ')}</div>
+            <dl>
+              <dt>{$t('Тип')}</dt>
+              <dd>{entityType}</dd>
+              {#if model}<dt>{$t('Нотация')}</dt>
+                <dd>{model.notation}</dd>
+                <dt>{$t('Блоков')}</dt>
+                <dd>{model.blocks.length}</dd>{:else if qualifier}<dt>{$t('Элементов')}</dt>
+                <dd>{qualifier.elements.length}</dd>{/if}
+              <dt>ID</dt>
+              <dd class="entity-id" title={entity.id}>{entity.id}</dd>
+            </dl>
+          </div>
+          {#if activeTab}<div class="inspector-danger">
+              <button class="tool-button danger" onclick={requestDelete} disabled={busy}
+                ><Icon name="trash" size={16} />{$t('Удалить')}
+                {block
+                  ? $t('блок')
+                  : flow
+                    ? $t('связь')
+                    : element
+                      ? $t('элемент')
+                      : model
+                        ? $t('модель')
+                        : $t('классификатор')}</button
+              >
+            </div>{/if}{/if}
+        <div class="inspector-note">
+          <Icon name="info" size={16} />
+          <p>{$t('Выберите объект в рабочей области, чтобы изменить его свойства.')}</p>
+        </div>
+      </aside>{/if}
 
-  <footer class="statusbar">
-    <div>
-      <span class="status-light" class:working={busy}></span><span role="status"
-        >{busy ? $t('Выполняется…') : $t(status, statusParams)}</span
-      >
-    </div>
-    <div>
-      <span>{client.desktop ? $t('Локальное ядро Rust') : $t('Браузерный режим')}</span><span
-        class="status-separator"
-      ></span><span
-        title={snapshot?.path ?? $t('Используйте «Сохранить», чтобы создать файл проекта')}
-        >{snapshot?.path ? snapshot.path.split(/[\\/]/).at(-1) : $t('Не сохранён в файл')}</span
-      >{#if snapshot?.dirty}<span class="dirty-caption">{$t('Изменён')}</span>{/if}<span
-        class="status-separator"
-      ></span><span>UTF-8</span>
-    </div>
-  </footer>
-</div>
+    <footer class="statusbar">
+      <div>
+        <span class="status-light" class:working={busy}></span><span role="status"
+          >{busy ? $t('Выполняется…') : $t(status, statusParams)}</span
+        >
+      </div>
+      <div>
+        <span>{client.desktop ? $t('Локальное ядро Rust') : $t('Браузерный режим')}</span><span
+          class="status-separator"
+        ></span><span
+          title={snapshot?.path ?? $t('Используйте «Сохранить», чтобы создать файл проекта')}
+          >{snapshot?.path ? snapshot.path.split(/[\\/]/).at(-1) : $t('Не сохранён в файл')}</span
+        >{#if snapshot?.dirty}<span class="dirty-caption">{$t('Изменён')}</span>{/if}<span
+          class="status-separator"
+        ></span><span>UTF-8</span>
+      </div>
+    </footer>
+  </div>
+{/if}
 
 <Modal
   open={modal === 'newProject' ||
@@ -1406,7 +1628,7 @@
   <form class="modal-form" onsubmit={submitCreate}>
     <p class="modal-intro">
       {modal === 'newProject'
-        ? $t('Начните с названия. Модели и справочники можно добавить позже.')
+        ? $t('Выберите нотацию и задайте название. Контекстная диаграмма будет создана сразу.')
         : modal === 'newModel'
           ? $t('Создайте диаграмму для описания процесса.')
           : modal === 'newFlow'
@@ -1425,6 +1647,25 @@
       maxlength="256"
       disabled={busy}
     />
+    {#if modal === 'newProject'}<fieldset class="notation-choice" disabled={busy}>
+        <legend>{$t('Нотация проекта')}</legend>
+        <label class:selected={modelNotation === 'IDEF0'}>
+          <input type="radio" bind:group={modelNotation} value="IDEF0" />
+          <span
+            ><strong>IDEF0</strong><small
+              >{$t('Функциональная модель процессов и их декомпозиции.')}</small
+            ></span
+          >
+        </label>
+        <label class:selected={modelNotation === 'DFD'}>
+          <input type="radio" bind:group={modelNotation} value="DFD" />
+          <span
+            ><strong>DFD</strong><small
+              >{$t('Потоки данных, процессы, внешние сущности и хранилища.')}</small
+            ></span
+          >
+        </label>
+      </fieldset>{/if}
     {#if modal === 'newModel'}<label for="model-notation">{$t('Нотация')}</label><select
         id="model-notation"
         bind:value={modelNotation}
@@ -1536,6 +1777,47 @@
         '. Импорт RSF, туннели, развилки, матрицы и отчёты будут добавлены следующими этапами.',
       )}
     </p>
+    <div class="modal-actions">
+      <button class="button primary" onclick={cancelModal}>{$t('Понятно')}</button>
+    </div>
+  </div></Modal
+>
+
+<Modal open={modal === 'ramusReport'} title={$t('Отчёт импорта Ramus')} onclose={cancelModal}
+  ><div class="modal-form">
+    {#if ramusReport}
+      <p class="modal-intro">
+        {$t('Файл {name} прочитан.', { name: ramusReport.source })}
+      </p>
+      <dl class="shortcut-list">
+        <dt>{$t('Модели')}</dt>
+        <dd>{ramusReport.models}</dd>
+        <dt>{$t('Блоки')}</dt>
+        <dd>{ramusReport.blocks}</dd>
+        <dt>{$t('Связи')}</dt>
+        <dd>{ramusReport.flows}</dd>
+        <dt>{$t('Классификаторы')}</dt>
+        <dd>{ramusReport.qualifiers}</dd>
+        <dt>{$t('Элементы')}</dt>
+        <dd>{ramusReport.elements}</dd>
+      </dl>
+      {#if ramusReport.warnings.length > 0}
+        <h3>{$t('Предупреждения')}</h3>
+        <ul>
+          {#each ramusReport.warnings as warning}
+            <li>{warning}</li>
+          {/each}
+        </ul>
+      {/if}
+      {#if ramusReport.unknownTables.length > 0}
+        <h3>{$t('Неизвестные таблицы')}</h3>
+        <ul>
+          {#each ramusReport.unknownTables as table}
+            <li>{table}</li>
+          {/each}
+        </ul>
+      {/if}
+    {/if}
     <div class="modal-actions">
       <button class="button primary" onclick={cancelModal}>{$t('Понятно')}</button>
     </div>

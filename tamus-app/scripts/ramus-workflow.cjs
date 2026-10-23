@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const { openExample } = require('./open-example.cjs');
 (async () => {
   const browser = await chromium.launch({
     headless: true,
@@ -20,7 +21,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       localStorage.setItem('tamus:ui:settings:v1', JSON.stringify({ advanced: true })),
     );
     await page.goto(process.env.TAMUS_URL || 'http://127.0.0.1:1420');
-    await page.getByRole('heading', { name: 'Обработка заказов', exact: true }).waitFor();
+    await openExample(page);
     const editor = page.locator('.diagram-editor');
     await editor.focus();
     await page.keyboard.press('x');

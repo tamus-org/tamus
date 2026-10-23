@@ -21,6 +21,7 @@ test('English UI messages are complete and preserve all interpolation parameters
     'src/lib/features/Diagram.svelte',
     'src/lib/components/Modal.svelte',
     'src/lib/components/ObjectProperties.svelte',
+    'src/lib/components/Welcome.svelte',
     'src/lib/components/WindowControls.svelte',
   ]) {
     const ast = parse(fs.readFileSync(new URL('../' + file, import.meta.url), 'utf8'), {

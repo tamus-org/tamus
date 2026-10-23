@@ -14,6 +14,9 @@ export interface Block extends Element {
   kind?: 'process' | 'external' | 'dataStore';
   fillColor?: string;
   textColor?: string;
+  fontName?: string;
+  fontSize?: number;
+  fontStyle?: 'normal' | 'bold' | 'italic' | 'bold italic';
 }
 export type PortSide = 'left' | 'top' | 'right' | 'bottom';
 export interface Flow {
@@ -28,6 +31,10 @@ export interface Flow {
   parentFlowId?: string;
   caption?: string;
   objectIds?: string[];
+  waypoints?: { x: number; y: number }[];
+  labelX?: number;
+  labelY?: number;
+  hideLabel?: boolean;
 }
 export interface DiagramSheet {
   author: string;
@@ -73,6 +80,8 @@ export interface Model extends Element {
   flows: Flow[];
   sheet?: DiagramSheet;
   parentBlockId?: string;
+  pageWidth?: number;
+  pageHeight?: number;
 }
 export interface Project extends Element {
   format: 'tamus-project';
@@ -166,6 +175,29 @@ export function createProject(name = 'Новый проект'): Project {
     models: [],
     qualifiers: [],
   };
+}
+
+export function createProjectWithDiagram(
+  name: string,
+  notation: 'IDEF0' | 'DFD',
+  description = '',
+): Project {
+  const project = createProject(name);
+  project.description = description;
+  project.models.push({
+    id: newId(),
+    name,
+    description,
+    notation,
+    blocks: [{ id: newId(), name, description: '', x: 390, y: 170 }],
+    flows: [],
+    sheet: {
+      ...diagramSheet(),
+      node: notation === 'DFD' ? 'Контекст' : 'A-0',
+      createdAt: new Date().toLocaleDateString('sv-SE'),
+    },
+  });
+  return project;
 }
 
 export function createExample(): Project {
@@ -469,6 +501,8 @@ export function reduceProject(current: Project, command: Command): Project {
         description: owner.description,
         notation: parent.notation,
         ...(parent.backgroundColor ? { backgroundColor: parent.backgroundColor } : {}),
+        ...(parent.pageWidth !== undefined ? { pageWidth: parent.pageWidth } : {}),
+        ...(parent.pageHeight !== undefined ? { pageHeight: parent.pageHeight } : {}),
         parentBlockId: owner.id,
         flows: [],
         blocks: Array.from({ length: count }, (_, i) => ({
@@ -615,6 +649,8 @@ export function validateProject(value: unknown): asserts value is Project {
       'sheet',
       'parentBlockId',
       'backgroundColor',
+      'pageWidth',
+      'pageHeight',
     ]);
     if (m.sheet !== undefined) {
       if (!object(m.sheet)) throw new Error('Некорректные поля штампа диаграммы.');
@@ -644,6 +680,19 @@ export function validateProject(value: unknown): asserts value is Project {
     )
       throw new Error('В контексте DFD один процесс. Откройте его декомпозицию.');
     checkColor(m.backgroundColor);
+    if (
+      (m.pageWidth !== undefined &&
+        (typeof m.pageWidth !== 'number' ||
+          !Number.isFinite(m.pageWidth) ||
+          m.pageWidth < 600 ||
+          m.pageWidth > 4000)) ||
+      (m.pageHeight !== undefined &&
+        (typeof m.pageHeight !== 'number' ||
+          !Number.isFinite(m.pageHeight) ||
+          m.pageHeight < 400 ||
+          m.pageHeight > 4000))
+    )
+      throw new Error('Размер листа: ширина 600–4000, высота 400–4000.');
     for (const b of m.blocks) {
       entity(b);
       knownFields(b, [
@@ -655,6 +704,9 @@ export function validateProject(value: unknown): asserts value is Project {
         'kind',
         'fillColor',
         'textColor',
+        'fontName',
+        'fontSize',
+        'fontStyle',
       ]);
       if (b.kind !== undefined && !['process', 'external', 'dataStore'].includes(b.kind))
         throw new Error('Неизвестный вид объекта диаграммы.');
@@ -662,6 +714,21 @@ export function validateProject(value: unknown): asserts value is Project {
         throw new Error('Внешние сущности и хранилища доступны в DFD.');
       checkColor(b.fillColor);
       checkColor(b.textColor);
+      if (b.fontName !== undefined && (typeof b.fontName !== 'string' || b.fontName.length > 128))
+        throw new Error('Имя шрифта блока должно содержать не более 128 символов.');
+      if (
+        b.fontSize !== undefined &&
+        (typeof b.fontSize !== 'number' ||
+          !Number.isFinite(b.fontSize) ||
+          b.fontSize < 6 ||
+          b.fontSize > 72)
+      )
+        throw new Error('Размер шрифта блока: 6–72.');
+      if (
+        b.fontStyle !== undefined &&
+        !['normal', 'bold', 'italic', 'bold italic'].includes(b.fontStyle)
+      )
+        throw new Error('Неизвестный стиль шрифта блока.');
       if (
         (b.width !== undefined &&
           (typeof b.width !== 'number' ||
@@ -711,12 +778,45 @@ export function validateProject(value: unknown): asserts value is Project {
         'parentFlowId',
         'caption',
         'objectIds',
+        'waypoints',
+        'labelX',
+        'labelY',
+        'hideLabel',
       ]);
       if (
         f.caption !== undefined &&
         (typeof f.caption !== 'string' || [...f.caption].length > 10000)
       )
         throw new Error('Некорректная подпись сегмента.');
+      if (
+        f.waypoints !== undefined &&
+        (!Array.isArray(f.waypoints) ||
+          f.waypoints.length > 128 ||
+          f.waypoints.some(
+            (point: unknown) =>
+              !object(point) ||
+              typeof point.x !== 'number' ||
+              typeof point.y !== 'number' ||
+              !Number.isFinite(point.x) ||
+              !Number.isFinite(point.y) ||
+              point.x < 0 ||
+              point.y < 0 ||
+              point.x > 2000 ||
+              point.y > 2000,
+          ))
+      )
+        throw new Error('Точки стрелки: не более 128, координаты 0–2000.');
+      for (const coordinate of [f.labelX, f.labelY])
+        if (
+          coordinate !== undefined &&
+          (typeof coordinate !== 'number' ||
+            !Number.isFinite(coordinate) ||
+            coordinate < 0 ||
+            coordinate > 2000)
+        )
+          throw new Error('Подпись стрелки должна находиться в пределах листа.');
+      if (f.hideLabel !== undefined && typeof f.hideLabel !== 'boolean')
+        throw new Error('Флаг скрытия подписи стрелки должен быть логическим.');
       if (
         f.objectIds !== undefined &&
         (!Array.isArray(f.objectIds) ||

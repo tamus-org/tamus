@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const { openExample } = require('./open-example.cjs');
 (async () => {
   const browser = await chromium.launch({
     headless: true,
@@ -15,7 +16,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const errors = [];
     page.on('pageerror', (e) => errors.push(e.message));
     await page.goto(process.env.TAMUS_URL || 'http://127.0.0.1:1420');
-    await page.getByRole('heading', { name: 'Обработка заказов', exact: true }).waitFor();
+    await openExample(page);
     const setLanguage = async (language) => {
       await page.getByRole('button', { name: /^(Настройки|Settings)$/ }).click();
       await page.locator('#interface-language').selectOption(language);

@@ -128,6 +128,21 @@ async fn project_open(
     .map_err(|e| e.to_string())?
 }
 #[tauri::command]
+fn project_open_path(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    expected_revision: String,
+    path: String,
+) -> Result<Snapshot, String> {
+    main_window(&window)?;
+    let destination = std::path::PathBuf::from(path);
+    let project = tamus_core::read_project(&destination)?;
+    with_session(&state, |s| {
+        s.replace(&expected_revision, project, Some(destination))
+    })
+}
+
+#[tauri::command]
 async fn project_save(
     window: WebviewWindow,
     app: tauri::AppHandle,
@@ -196,6 +211,94 @@ async fn project_save(
     .await
     .map_err(|e| e.to_string())?
 }
+#[derive(serde::Serialize)]
+struct RamusFile {
+    name: String,
+    data: Vec<u8>,
+}
+
+#[tauri::command]
+async fn ramus_read_file(
+    app: tauri::AppHandle,
+    locale: Option<String>,
+) -> Result<Option<RamusFile>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let english = locale.as_deref() == Some("en");
+        let Some(file) = app
+            .dialog()
+            .file()
+            .set_title(if english {
+                "Open Ramus model"
+            } else {
+                "Открыть модель Ramus"
+            })
+            .add_filter(
+                if english {
+                    "Ramus model (.rsf)"
+                } else {
+                    "Модель Ramus (.rsf)"
+                },
+                &["rsf"],
+            )
+            .blocking_pick_file()
+        else {
+            return Ok(None);
+        };
+        let path = file.into_path().map_err(|e| e.to_string())?;
+        let data =
+            std::fs::read(&path).map_err(|e| format!("Не удалось прочитать файл Ramus: {e}"))?;
+        let name = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("model.rsf")
+            .to_string();
+        Ok(Some(RamusFile { name, data }))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn ramus_write_file(
+    app: tauri::AppHandle,
+    data: Vec<u8>,
+    file_name: String,
+    locale: Option<String>,
+) -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let english = locale.as_deref() == Some("en");
+        let Some(file) = app
+            .dialog()
+            .file()
+            .set_title(if english {
+                "Export to Ramus"
+            } else {
+                "Экспорт в Ramus"
+            })
+            .add_filter(
+                if english {
+                    "Ramus model (.rsf)"
+                } else {
+                    "Модель Ramus (.rsf)"
+                },
+                &["rsf"],
+            )
+            .set_file_name(&file_name)
+            .blocking_save_file()
+        else {
+            return Ok(None);
+        };
+        let mut path = file.into_path().map_err(|e| e.to_string())?;
+        if !path.to_string_lossy().to_lowercase().ends_with(".rsf") {
+            path.set_extension("rsf");
+        }
+        std::fs::write(&path, data).map_err(|e| format!("Не удалось сохранить файл Ramus: {e}"))?;
+        Ok(Some(path.to_string_lossy().to_string()))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[tauri::command]
 fn project_close_window(window: WebviewWindow, state: State<'_, AppState>) -> Result<(), String> {
     main_window(&window)?;
@@ -227,7 +330,10 @@ pub fn run() {
             project_undo,
             project_redo,
             project_open,
+            project_open_path,
             project_save,
+            ramus_read_file,
+            ramus_write_file,
             project_close_window
         ])
         .run(tauri::generate_context!())

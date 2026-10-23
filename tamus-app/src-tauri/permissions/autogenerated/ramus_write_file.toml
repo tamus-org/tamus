@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-ramus-write-file"
+description = "Enables the ramus_write_file command without any pre-configured scope."
+commands.allow = ["ramus_write_file"]
+
+[[permission]]
+identifier = "deny-ramus-write-file"
+description = "Denies the ramus_write_file command without any pre-configured scope."
+commands.deny = ["ramus_write_file"]
