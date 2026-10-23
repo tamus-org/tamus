@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const { openExample } = require('./open-example.cjs');
 (async () => {
   const browser = await chromium.launch({
     headless: true,
@@ -17,7 +18,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     const artifacts = path.join(__dirname, '..', '.artifacts');
     fs.mkdirSync(artifacts, { recursive: true });
     await page.goto(process.env.TAMUS_URL || 'http://127.0.0.1:1420');
-    await page.getByRole('heading', { name: 'Обработка заказов', exact: true }).waitFor();
+    await openExample(page);
     assert.equal(await page.locator('.user-avatar').count(), 0);
     assert.equal(await page.locator('.window-controls button').count(), 3);
     assert.equal(

@@ -128,6 +128,21 @@ async fn project_open(
     .map_err(|e| e.to_string())?
 }
 #[tauri::command]
+fn project_open_path(
+    window: WebviewWindow,
+    state: State<'_, AppState>,
+    expected_revision: String,
+    path: String,
+) -> Result<Snapshot, String> {
+    main_window(&window)?;
+    let destination = std::path::PathBuf::from(path);
+    let project = tamus_core::read_project(&destination)?;
+    with_session(&state, |s| {
+        s.replace(&expected_revision, project, Some(destination))
+    })
+}
+
+#[tauri::command]
 async fn project_save(
     window: WebviewWindow,
     app: tauri::AppHandle,
@@ -227,6 +242,7 @@ pub fn run() {
             project_undo,
             project_redo,
             project_open,
+            project_open_path,
             project_save,
             project_close_window
         ])

@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const fs = require('node:fs');
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const { openExample } = require('./open-example.cjs');
 
 (async () => {
   const browser = await chromium.launch({
@@ -22,7 +23,7 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
       localStorage.setItem('tamus:ui:settings:v1', JSON.stringify({ advanced: true })),
     );
     await page.goto(process.env.TAMUS_URL || 'http://127.0.0.1:1420');
-    await page.getByRole('heading', { name: 'Обработка заказов', exact: true }).waitFor();
+    await openExample(page);
     assert.equal(await page.locator('.function-block').count(), 3);
     await page.screenshot({ path: path.join(artifacts, 'main-window.png') });
 
@@ -124,12 +125,13 @@ const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
     assert.notEqual(saved.models[0].blocks[0].x, 100);
     assert.equal(saved.qualifiers.at(-1).elements[0].name, 'Договор поставки');
 
-    // A new project starts empty, and opening the saved file restores all data.
+    // A new project starts with its context diagram, and opening the saved file restores all data.
     await page.getByRole('button', { name: 'Новый', exact: true }).click();
     await page.getByRole('dialog', { name: 'Новый проект', exact: true }).waitFor();
     await page.locator('#create-name').fill('Чистый проект');
     await page.getByRole('button', { name: 'Создать', exact: true }).click();
-    await page.getByRole('heading', { name: 'От идеи — к понятной модели', exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Чистый проект', exact: true }).waitFor();
+    assert.equal(await page.locator('.function-block').count(), 1);
     const chooserEvent = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Открыть', exact: true }).click();
     const chooser = await chooserEvent;

@@ -168,6 +168,29 @@ export function createProject(name = 'Новый проект'): Project {
   };
 }
 
+export function createProjectWithDiagram(
+  name: string,
+  notation: 'IDEF0' | 'DFD',
+  description = '',
+): Project {
+  const project = createProject(name);
+  project.description = description;
+  project.models.push({
+    id: newId(),
+    name,
+    description,
+    notation,
+    blocks: [{ id: newId(), name, description: '', x: 390, y: 170 }],
+    flows: [],
+    sheet: {
+      ...diagramSheet(),
+      node: notation === 'DFD' ? 'Контекст' : 'A-0',
+      createdAt: new Date().toLocaleDateString('sv-SE'),
+    },
+  });
+  return project;
+}
+
 export function createExample(): Project {
   return {
     format: 'tamus-project',
